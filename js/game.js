@@ -72,6 +72,9 @@ function update(dt) {
   // Update soldiers
   updateSoldiers(dt);
 
+  // Update worms
+  updateWorms(dt);
+
   // Spawn mound logic
   updateMound(dt);
 
@@ -98,6 +101,7 @@ function startNewRound() {
   bullets = [];
   particles = [];
   soldiers = [];
+  worms = [];
   mound = null;
   powerUp = null;
   roundTimer = 0;
@@ -116,6 +120,9 @@ function startNewRound() {
       up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter'
     }),
   ];
+
+  // Spawn decorative worms in tunnels
+  spawnWorms();
 
   countdownTimer = 3;
   gameState = STATE.COUNTDOWN;

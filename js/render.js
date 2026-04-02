@@ -154,6 +154,11 @@ function draw() {
     ctx.fillText(label, px + TILE / 2, py + TILE / 2 + 3);
   }
 
+  // Draw worms
+  for (const w of worms) {
+    drawWorm(w);
+  }
+
   // Draw soldiers
   for (const s of soldiers) {
     drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
@@ -404,6 +409,58 @@ function drawAnt(x, y, dir, color, scale, alpha, isQueen, bobPhase, hp) {
       }
     }
   }
+
+  ctx.restore();
+}
+
+function drawWorm(w) {
+  const px = w.x * TILE + TILE / 2;
+  const py = w.y * TILE + TILE / 2;
+  const segLen = TILE * 0.18;
+
+  ctx.save();
+  ctx.translate(px, py);
+  const angles = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+  ctx.rotate(angles[w.dir] || 0);
+
+  // Draw segmented body trailing behind head
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < w.segments; i++) {
+    const t = i / w.segments;
+    const wiggle = Math.sin(w.wigglePhase + i * 1.2) * TILE * 0.12;
+    const sx = -i * segLen;
+    const sy = wiggle;
+    const size = TILE * (0.14 - t * 0.04);
+
+    // Body segment
+    ctx.fillStyle = i === 0 ? '#D4856A' : '#C47A62';
+    ctx.beginPath();
+    ctx.arc(sx, sy, size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Segment ring
+    if (i > 0) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Head highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(TILE * 0.04, -TILE * 0.03, TILE * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tiny eyes
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(TILE * 0.08, -TILE * 0.05, 1.5, 0, Math.PI * 2);
+  ctx.arc(TILE * 0.08, TILE * 0.05, 1.5, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
