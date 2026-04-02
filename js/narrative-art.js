@@ -89,169 +89,123 @@ function drawNarrativeArt0(cx, cy) {
   }
 }
 
-// ─── Page 1: Large anime queen ant with crown ────────────────
+// ─── Page 1: Three champions showcase ────────────────────────
 function drawNarrativeArt1(cx, cy) {
   const t = performance.now() / 1000;
-  const bob = Math.sin(t * 1.5) * 3;
+  const chars = [
+    { name: 'ANT', color: '#C83030', x: -90, ability: 'TRAPS' },
+    { name: 'BEETLE', color: '#3066C8', x: 0, ability: 'FLIGHT' },
+    { name: 'COCKROACH', color: '#30A830', x: 90, ability: 'DEFLECT' },
+  ];
 
-  ctx.save();
-  ctx.translate(cx, cy + 60 + bob);
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    const bob = Math.sin(t * 1.5 + i * 1) * 4;
+    const px = cx + c.x;
+    const py = cy + 50 + bob;
 
-  // Glow aura
-  const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 70);
-  grad.addColorStop(0, 'rgba(232,200,64,0.15)');
-  grad.addColorStop(1, 'rgba(232,200,64,0)');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(0, 0, 70, 0, Math.PI * 2);
-  ctx.fill();
+    // Glow
+    ctx.save();
+    ctx.shadowColor = c.color;
+    ctx.shadowBlur = 15 + Math.sin(t * 2 + i) * 5;
 
-  // Abdomen
-  ctx.fillStyle = '#C83030';
-  ctx.beginPath();
-  ctx.ellipse(-30, 5, 22, 18, 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  // Abdomen shine
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.beginPath();
-  ctx.ellipse(-25, -3, 10, 6, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  // Abdomen stripes
-  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-  ctx.lineWidth = 2;
-  for (let i = -1; i <= 1; i++) {
-    ctx.beginPath();
-    ctx.moveTo(-30 + i * 8, -12);
-    ctx.lineTo(-30 + i * 8, 18);
-    ctx.stroke();
+    ctx.translate(px, py);
+
+    if (c.name === 'ANT') {
+      // Ant body
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.ellipse(-12, 0, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(2, 0, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(14, 0, 8, 7, 0, 0, Math.PI * 2); ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(18, -3, 3, 0, Math.PI * 2); ctx.arc(18, 3, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(19, -3, 1.5, 0, Math.PI * 2); ctx.arc(19, 3, 1.5, 0, Math.PI * 2); ctx.fill();
+      // Crown
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.moveTo(10, -10); ctx.lineTo(12, -16); ctx.lineTo(15, -11);
+      ctx.lineTo(17, -17); ctx.lineTo(20, -10);
+      ctx.closePath(); ctx.fill();
+      // Antennae
+      ctx.strokeStyle = c.color; ctx.lineWidth = 1.5;
+      const sw = Math.sin(t * 3 + i) * 4;
+      ctx.beginPath(); ctx.moveTo(20, -5); ctx.quadraticCurveTo(28, -16 + sw, 32, -20 + sw); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(20, 3); ctx.quadraticCurveTo(28, 14 - sw, 32, 18 - sw); ctx.stroke();
+    } else if (c.name === 'BEETLE') {
+      // Beetle — round armored body
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.ellipse(0, 0, 16, 12, 0, 0, Math.PI * 2); ctx.fill();
+      // Shell line
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, 12); ctx.stroke();
+      // Shell shine
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath(); ctx.ellipse(-4, -4, 6, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+      // Head
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.ellipse(14, 0, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(17, -3, 2.5, 0, Math.PI * 2); ctx.arc(17, 3, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(18, -3, 1.2, 0, Math.PI * 2); ctx.arc(18, 3, 1.2, 0, Math.PI * 2); ctx.fill();
+      // Wings (if flying animation)
+      const wingFlap = Math.sin(t * 8) * 0.3;
+      ctx.fillStyle = 'rgba(150,200,255,0.25)';
+      ctx.beginPath(); ctx.ellipse(-5, -14 + wingFlap * 10, 12, 5, -0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-5, 14 - wingFlap * 10, 12, 5, 0.4, 0, Math.PI * 2); ctx.fill();
+      // Crown
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.moveTo(10, -8); ctx.lineTo(12, -14); ctx.lineTo(15, -9);
+      ctx.lineTo(17, -15); ctx.lineTo(20, -8);
+      ctx.closePath(); ctx.fill();
+    } else if (c.name === 'COCKROACH') {
+      // Cockroach — flat oval body
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.ellipse(-8, 0, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+      // Shell plates
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(-8, 0, 10, 9, 0.1, 0, Math.PI * 2); ctx.stroke();
+      // Head
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.ellipse(10, 0, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(14, -3, 2.5, 0, Math.PI * 2); ctx.arc(14, 3, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(15, -3, 1.2, 0, Math.PI * 2); ctx.arc(15, 3, 1.2, 0, Math.PI * 2); ctx.fill();
+      // Long antennae
+      ctx.strokeStyle = c.color; ctx.lineWidth = 1;
+      const csw = Math.sin(t * 4 + i) * 6;
+      ctx.beginPath(); ctx.moveTo(15, -4); ctx.quadraticCurveTo(25, -15 + csw, 35, -20 + csw); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 4); ctx.quadraticCurveTo(25, 15 - csw, 35, 20 - csw); ctx.stroke();
+      // Shield shimmer
+      const shimmer = Math.sin(t * 3 + i) * 0.3 + 0.3;
+      ctx.strokeStyle = `rgba(100,255,100,${shimmer})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
+      // Crown
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.moveTo(6, -8); ctx.lineTo(8, -14); ctx.lineTo(11, -9);
+      ctx.lineTo(13, -15); ctx.lineTo(16, -8);
+      ctx.closePath(); ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Label below
+    ctx.fillStyle = c.color;
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, px, cy + 85);
+    ctx.fillStyle = '#888';
+    ctx.font = '9px monospace';
+    ctx.fillText(c.ability, px, cy + 97);
   }
-
-  // Petiole
-  ctx.fillStyle = '#C83030';
-  ctx.beginPath();
-  ctx.ellipse(-5, 3, 6, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Thorax
-  ctx.fillStyle = '#C83030';
-  ctx.beginPath();
-  ctx.ellipse(12, 0, 16, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.1)';
-  ctx.beginPath();
-  ctx.ellipse(14, -5, 8, 5, -0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Head
-  ctx.fillStyle = '#C83030';
-  ctx.beginPath();
-  ctx.ellipse(35, -2, 14, 13, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Big anime eyes
-  const blinkAmt = Math.sin(t * 3) > 0.92 ? 0.2 : 1;
-  // Left eye
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(31, -7, 6, 7 * blinkAmt, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#220000';
-  ctx.beginPath();
-  ctx.ellipse(32, -7, 4, 5 * blinkAmt, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Eye sparkle
-  if (blinkAmt > 0.5) {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(30, -9, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // Right eye
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(31, 5, 6, 7 * blinkAmt, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#220000';
-  ctx.beginPath();
-  ctx.ellipse(32, 5, 4, 5 * blinkAmt, 0, 0, Math.PI * 2);
-  ctx.fill();
-  if (blinkAmt > 0.5) {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(30, 3, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Mandibles (animated)
-  const mandOpen = Math.sin(t * 2) * 0.1 + 0.2;
-  ctx.strokeStyle = '#FFD700';
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(46, -5);
-  ctx.quadraticCurveTo(55, -12 * mandOpen - 5, 58, -2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(46, 3);
-  ctx.quadraticCurveTo(55, 12 * mandOpen + 3, 58, 0);
-  ctx.stroke();
-
-  // Antennae
-  const sway1 = Math.sin(t * 2.5) * 0.15;
-  const sway2 = Math.sin(t * 2.5 + 1.5) * 0.15;
-  ctx.strokeStyle = '#C83030';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(42, -10);
-  ctx.quadraticCurveTo(55, -30 + sway1 * 40, 65, -38 + sway1 * 30);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(42, 8);
-  ctx.quadraticCurveTo(55, 28 + sway2 * 40, 65, 36 + sway2 * 30);
-  ctx.stroke();
-  // Antenna tips
-  ctx.fillStyle = '#C83030';
-  ctx.beginPath();
-  ctx.arc(65, -38 + sway1 * 30, 3, 0, Math.PI * 2);
-  ctx.arc(65, 36 + sway2 * 30, 3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Legs (3 pairs)
-  ctx.strokeStyle = '#A02828';
-  ctx.lineWidth = 2;
-  const legPos = [-20, 0, 15];
-  for (let i = 0; i < 3; i++) {
-    const phase = Math.sin(t * 3 + i * 1.2) * 4;
-    // Top legs
-    ctx.beginPath();
-    ctx.moveTo(legPos[i], -12);
-    ctx.quadraticCurveTo(legPos[i] - 5, -28 + phase, legPos[i] - 12, -35 + phase);
-    ctx.stroke();
-    // Bottom legs
-    ctx.beginPath();
-    ctx.moveTo(legPos[i], 14);
-    ctx.quadraticCurveTo(legPos[i] - 5, 30 - phase, legPos[i] - 12, 37 - phase);
-    ctx.stroke();
-  }
-
-  // Crown
-  ctx.fillStyle = '#FFD700';
-  ctx.beginPath();
-  ctx.moveTo(25, -18);
-  ctx.lineTo(28, -28);
-  ctx.lineTo(32, -20);
-  ctx.lineTo(36, -30);
-  ctx.lineTo(40, -20);
-  ctx.lineTo(43, -27);
-  ctx.lineTo(45, -16);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#FF4444';
-  ctx.beginPath();
-  ctx.arc(35, -24, 2, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
 }
 
 // ─── Page 2: Action scene — shooting acid ────────────────────
@@ -508,11 +462,222 @@ function drawNarrativeQueen(x, y, color, t, flip) {
   ctx.restore();
 }
 
+// ─── Page 5 (new): Worms and underground life ───────────────
+function drawNarrativeArtWorms(cx, cy) {
+  const t = performance.now() / 1000;
+
+  // Dirt cross-section
+  ctx.fillStyle = '#3D2A14';
+  ctx.fillRect(cx - 120, cy + 10, 240, 80);
+  ctx.fillStyle = '#4A3520';
+  ctx.fillRect(cx - 120, cy + 30, 240, 20);
+  ctx.fillStyle = '#3D2A14';
+  ctx.fillRect(cx - 120, cy + 60, 240, 30);
+
+  // Tunnel carved through
+  ctx.fillStyle = '#1A1008';
+  ctx.beginPath();
+  ctx.moveTo(cx - 120, cy + 40);
+  ctx.quadraticCurveTo(cx - 40, cy + 30, cx, cy + 45);
+  ctx.quadraticCurveTo(cx + 40, cy + 60, cx + 120, cy + 50);
+  ctx.lineTo(cx + 120, cy + 65);
+  ctx.quadraticCurveTo(cx + 40, cy + 75, cx, cy + 60);
+  ctx.quadraticCurveTo(cx - 40, cy + 45, cx - 120, cy + 55);
+  ctx.fill();
+
+  // Worms in the dirt (wiggling)
+  for (let w = 0; w < 3; w++) {
+    const wx = cx - 60 + w * 60;
+    const wy = cy + 25 + (w % 2) * 35;
+    ctx.strokeStyle = '#D4856A';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(wx, wy);
+    for (let s = 1; s <= 4; s++) {
+      const sx = wx + s * 8;
+      const sy = wy + Math.sin(t * 4 + w + s * 1.2) * 4;
+      ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    // Head
+    ctx.fillStyle = '#D4856A';
+    ctx.beginPath();
+    ctx.arc(wx, wy, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(wx + 1, wy - 1.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Heart icon floating up (HP restore)
+  const heartY = cy + 15 + Math.sin(t * 2) * 5;
+  ctx.fillStyle = '#FF4444';
+  ctx.font = '16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('\u2665', cx + 80, heartY);
+  ctx.fillStyle = '#44FF44';
+  ctx.font = '12px monospace';
+  ctx.fillText('+1', cx + 95, heartY);
+
+  // Small queen eating worm
+  const qx = cx - 90, qy = cy + 48;
+  ctx.fillStyle = COLORS.p1;
+  ctx.beginPath();
+  ctx.ellipse(qx, qy, 6, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(qx + 8, qy, 5, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath();
+  ctx.moveTo(qx + 5, qy - 6); ctx.lineTo(qx + 7, qy - 10);
+  ctx.lineTo(qx + 9, qy - 6); ctx.lineTo(qx + 11, qy - 10);
+  ctx.lineTo(qx + 13, qy - 5);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ─── Page 6 (new): The Anteater ──────────────────────────────
+function drawNarrativeArtAnteater(cx, cy) {
+  const t = performance.now() / 1000;
+  const bob = Math.sin(t * 1.2) * 3;
+
+  ctx.save();
+  ctx.translate(cx, cy + 55 + bob);
+
+  // Shadow beneath
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 30, 60, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bushy tail
+  const tailWag = Math.sin(t * 2.5) * 0.15;
+  ctx.save();
+  ctx.translate(-55, -5);
+  ctx.rotate(tailWag);
+  ctx.fillStyle = '#5A4210';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 20, 28, 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Hind body
+  ctx.fillStyle = '#6B4F10';
+  ctx.beginPath();
+  ctx.ellipse(-30, 0, 22, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Main body
+  ctx.fillStyle = '#8B6914';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 28, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body stripe
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 20, 20, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Neck
+  ctx.fillStyle = '#8B6914';
+  ctx.beginPath();
+  ctx.ellipse(25, -3, 15, 13, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Long snout
+  ctx.fillStyle = '#A07820';
+  ctx.beginPath();
+  ctx.moveTo(35, -5);
+  ctx.quadraticCurveTo(60, -3, 75, 0);
+  ctx.quadraticCurveTo(60, 3, 35, 5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tongue lashing out (animated)
+  const tongueLen = (Math.sin(t * 2) + 1) * 25;
+  if (tongueLen > 10) {
+    ctx.strokeStyle = '#FF6688';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    const wave = Math.sin(t * 15) * 3;
+    ctx.beginPath();
+    ctx.moveTo(75, 0);
+    ctx.quadraticCurveTo(75 + tongueLen / 2, wave, 75 + tongueLen, wave * 0.5);
+    ctx.stroke();
+    // Tongue tip
+    ctx.fillStyle = '#FF4466';
+    ctx.beginPath();
+    ctx.arc(75 + tongueLen, wave * 0.5, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Eye (menacing red glint)
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(30, -10, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#CC2222';
+  ctx.beginPath();
+  ctx.arc(29, -11, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ear
+  ctx.fillStyle = '#6B4F10';
+  ctx.beginPath();
+  ctx.ellipse(22, -16, 5, 8, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = '#6B4F10';
+  const legSwing = Math.sin(t * 3);
+  const legPairs = [[-20, 1], [-20, -1], [10, 1], [10, -1]];
+  for (let i = 0; i < legPairs.length; i++) {
+    const [lx, side] = legPairs[i];
+    const sw = (i % 2 === 0 ? legSwing : -legSwing) * 5;
+    ctx.beginPath();
+    ctx.ellipse(lx + sw, side * 22, 5, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Claws
+    ctx.fillStyle = '#444';
+    for (let c = -1; c <= 1; c++) {
+      ctx.beginPath();
+      ctx.arc(lx + sw + c * 3, side * 29, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#6B4F10';
+  }
+
+  // Nostrils
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(73, -1.5, 1.5, 0, Math.PI * 2);
+  ctx.arc(73, 1.5, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // Danger indicator
+  const flash = Math.sin(t * 4) > 0;
+  if (flash) {
+    ctx.fillStyle = '#CC3333';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('!! DANGER !!', cx, cy + 105);
+  }
+}
+
 // ─── Master dispatch ─────────────────────────────────────────
 const NARRATIVE_ART = [
-  drawNarrativeArt0,
-  drawNarrativeArt1,
-  drawNarrativeArt2,
-  drawNarrativeArt3,
-  drawNarrativeArt4,
+  drawNarrativeArt0,         // Deep beneath the earth
+  drawNarrativeArt1,         // You are the queen
+  drawNarrativeArt2,         // Dig. Fight. Conquer.
+  drawNarrativeArtWorms,     // Underground life (worms)
+  drawNarrativeArtAnteater,  // The Anteater
+  drawNarrativeArt3,         // Power of the Colony
+  drawNarrativeArt4,         // How to Play
 ];

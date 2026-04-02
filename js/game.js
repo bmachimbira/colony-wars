@@ -6,6 +6,11 @@ function update(dt) {
   }
 
   if (gameState === STATE.TITLE) {
+    if (keys['KeyO']) {
+      keys['KeyO'] = false;
+      showMultiplayerMenu();
+      return;
+    }
     if (Object.values(keys).some(v => v)) {
       gameState = STATE.CHAR_SELECT;
       charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
@@ -64,17 +69,16 @@ function update(dt) {
     return;
   }
 
-  if (gameState === STATE.PAUSED) {
-    if (keys['Escape']) {
-      keys['Escape'] = false;
-      gameState = STATE.PLAYING;
-    }
-    return;
-  }
-
-  if (gameState === STATE.PLAYING && keys['Escape']) {
+  // Escape exits to character select from any gameplay state
+  if (keys['Escape'] && (gameState === STATE.PLAYING || gameState === STATE.PAUSED || gameState === STATE.COUNTDOWN || gameState === STATE.ROUND_END)) {
     keys['Escape'] = false;
-    gameState = STATE.PAUSED;
+    scores = [0, 0];
+    roundNum = 0;
+    gameState = STATE.CHAR_SELECT;
+    charSelect[0].ready = false;
+    charSelect[1].ready = false;
+    stopMusic();
+    for (const k in keys) keys[k] = false;
     return;
   }
 
@@ -203,8 +207,19 @@ function startNewRound() {
 
 // ─── Narrative ───────────────────────────────────────────────
 function updateNarrative(dt) {
+  // Start music on first frame of narrative
+  if (!musicPlaying) startMusic();
+
   const page = NARRATIVE_PAGES[narrativePage];
   const fullText = page.lines.join('\n');
+
+  // ESC skips entire intro
+  if (keys['Escape']) {
+    keys['Escape'] = false;
+    gameState = STATE.TITLE;
+    for (const k in keys) keys[k] = false;
+    return;
+  }
 
   // Typewriter effect
   if (!narrativePageReady) {
@@ -252,7 +267,9 @@ function gameLoop(time) {
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
     pollGamepads();
+    mpApplyRemoteInput();
     update(dt);
+    mpSendInput(dt);
     draw();
   } catch (e) {
     console.error('Game loop error:', e);
