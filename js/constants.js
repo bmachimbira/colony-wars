@@ -69,3 +69,25 @@ const POWER_COLORS = {
   SHIELD: '#44DDFF',
   MEGA: '#FF44FF',
 };
+
+// ─── Round Mutators ─────────────────────────────────────────
+const MUTATORS = [
+  { id: 'FLOODED',  name: 'Flooded Tunnels', color: '#4488CC', icon: '~' },
+  { id: 'DARKNESS', name: 'Darkness',         color: '#665588', icon: 'D' },
+  { id: 'CAVEIN',   name: 'Cave-In',          color: '#8A6A4A', icon: 'V' },
+  { id: 'SWARM',    name: 'Swarm',            color: '#CC8830', icon: 'S' },
+  { id: 'TOXIC',    name: 'Toxic Spores',     color: '#44CC44', icon: 'T' },
+  { id: 'FRENZY',   name: 'Frenzy',           color: '#CC4444', icon: 'F' },
+];
+
+// Fog of war
+const FOG_VISION_RADIUS = 7;
+const FOG_DARKNESS_RADIUS = 4;
+const FOG_SOLDIER_RADIUS = 3;
+
+// Tunnel regrowth
+const REGROWTH_INTERVAL = 8;  // seconds between regrowth cycles
+const REGROWTH_IMMUNITY = 5;  // seconds after digging before tile can regrow
+
+// Cave-in
+const CAVEIN_INTERVAL = 15;   // seconds between border shrinks

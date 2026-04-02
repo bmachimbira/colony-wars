@@ -110,7 +110,8 @@ function updateQueen(q, dt) {
     q.walkSoundTimer = 0;
   }
 
-  const speed = q.activePowerUp === 'SUGAR' ? q.speed * 2 : q.speed;
+  const speedMult = typeof getSpeedMultiplier === 'function' ? getSpeedMultiplier() : 1;
+  const speed = (q.activePowerUp === 'SUGAR' ? q.speed * 2 : q.speed) * speedMult;
 
   if (mx !== 0) {
     const nx = q.x + mx * speed * dt;
@@ -234,10 +235,11 @@ function updateQueen(q, dt) {
 
 // ─── Bullet Update ───────────────────────────────────────────
 function updateBullets(dt) {
+  const bulletSpeedMult = typeof getSpeedMultiplier === 'function' ? getSpeedMultiplier() : 1;
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
-    b.x += b.dx * b.speed * dt;
-    b.y += b.dy * b.speed * dt;
+    b.x += b.dx * b.speed * bulletSpeedMult * dt;
+    b.y += b.dy * b.speed * bulletSpeedMult * dt;
 
     // Spawn trail particle
     if (gameRandom() < 0.4) {
@@ -266,11 +268,13 @@ function updateBullets(dt) {
             const nx = tx + dx, ny = ty + dy;
             if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && map[ny][nx] === T.DIRT) {
               map[ny][nx] = T.DUG;
+              if (lastDugTime[ny]) lastDugTime[ny][nx] = roundTimer;
               spawnParticles(nx, ny, COLORS.dirtBord, 3);
             }
           }
       } else {
         map[ty][tx] = T.DUG;
+        if (lastDugTime[ty]) lastDugTime[ty][tx] = roundTimer;
         spawnParticles(tx, ty, COLORS.dirtBord, 5);
       }
       playDirtBreak();
@@ -352,15 +356,82 @@ function updateSoldiers(dt) {
       continue;
     }
 
-    // Find enemy queen
-    const enemy = queens.find(q => q.colony !== s.colony);
+    // Find enemy queen and own queen
+    const enemy = queens.find(q => q.colony !== s.colony && !q.dead);
+    const ownQueen = queens.find(q => q.colony === s.colony);
     if (!enemy) continue;
 
-    // BFS pathfind every 2 seconds (soldiers can dig through dirt)
+    // ── Role transitions ──
+    if (s.lifetime < 5) {
+      if (s.role !== 'kamikaze') {
+        s.role = 'kamikaze';
+        s.pathTimer = 0;
+      }
+    } else if (ownQueen && ownQueen.hp <= 1 && !ownQueen.dead) {
+      const distToQueen = Math.abs(Math.round(s.x) - Math.round(ownQueen.x)) + Math.abs(Math.round(s.y) - Math.round(ownQueen.y));
+      if (distToQueen <= 6) {
+        if (s.role !== 'defend') { s.role = 'defend'; s.pathTimer = 0; }
+      } else {
+        s.role = 'attack';
+      }
+    } else {
+      s.role = 'attack';
+    }
+
+    // ── Determine target based on role ──
+    let targetX, targetY;
+    const sMult = typeof getSpeedMultiplier === 'function' ? getSpeedMultiplier() : 1;
+    const moveSpeed = (s.role === 'kamikaze' ? s.speed * 2 : s.speed) * sMult;
+    const pathInterval = s.role === 'kamikaze' ? 1 : 2;
+
+    if (s.role === 'defend' && ownQueen) {
+      // Target nearest enemy entity to own queen
+      let nearestDist = Infinity;
+      targetX = Math.round(enemy.x);
+      targetY = Math.round(enemy.y);
+      for (const es of soldiers) {
+        if (es.colony === s.colony) continue;
+        const d = Math.abs(Math.round(es.x) - Math.round(ownQueen.x)) + Math.abs(Math.round(es.y) - Math.round(ownQueen.y));
+        if (d < nearestDist) { nearestDist = d; targetX = Math.round(es.x); targetY = Math.round(es.y); }
+      }
+      const queenDist = Math.abs(Math.round(enemy.x) - Math.round(ownQueen.x)) + Math.abs(Math.round(enemy.y) - Math.round(ownQueen.y));
+      if (queenDist < nearestDist) { targetX = Math.round(enemy.x); targetY = Math.round(enemy.y); }
+    } else if (s.role === 'kamikaze') {
+      targetX = Math.round(enemy.x);
+      targetY = Math.round(enemy.y);
+    } else {
+      // Attack with flank offset
+      targetX = Math.max(0, Math.min(COLS - 1, Math.round(enemy.x) + (s.flankX || 0)));
+      targetY = Math.max(0, Math.min(ROWS - 1, Math.round(enemy.y) + (s.flankY || 0)));
+      if (!canWalk(targetX, targetY) && map[targetY] && map[targetY][targetX] !== T.DIRT) {
+        targetX = Math.round(enemy.x);
+        targetY = Math.round(enemy.y);
+      }
+    }
+
+    // BFS pathfind
     s.pathTimer -= dt;
     if (s.pathTimer <= 0 || !s.nextTile) {
-      s.pathTimer = 2;
-      s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y), true);
+      s.pathTimer = pathInterval;
+      s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), targetX, targetY, true);
+    }
+
+    // ── Group advance: slow down if ahead of allies ──
+    if (s.role === 'attack') {
+      let nearbyAllies = 0, alliesAhead = 0;
+      const sx = Math.round(s.x), sy = Math.round(s.y);
+      const myDist = Math.abs(sx - Math.round(enemy.x)) + Math.abs(sy - Math.round(enemy.y));
+      for (const ally of soldiers) {
+        if (ally === s || ally.colony !== s.colony) continue;
+        const ad = Math.abs(Math.round(ally.x) - sx) + Math.abs(Math.round(ally.y) - sy);
+        if (ad <= 4) {
+          nearbyAllies++;
+          if (Math.abs(Math.round(ally.x) - Math.round(enemy.x)) + Math.abs(Math.round(ally.y) - Math.round(enemy.y)) <= myDist) alliesAhead++;
+        }
+      }
+      if (nearbyAllies >= 2 && alliesAhead < nearbyAllies / 2 && myDist > 3) {
+        s.pathTimer += dt * 0.5;
+      }
     }
 
     // Move toward next tile
@@ -371,38 +442,44 @@ function updateSoldiers(dt) {
       if (dist < 0.1) {
         s.x = s.nextTile.x;
         s.y = s.nextTile.y;
-        // Dig through dirt on arrival
         if (map[s.nextTile.y] && map[s.nextTile.y][s.nextTile.x] === T.DIRT) {
           map[s.nextTile.y][s.nextTile.x] = T.DUG;
+          if (lastDugTime[s.nextTile.y]) lastDugTime[s.nextTile.y][s.nextTile.x] = roundTimer;
           spawnParticles(s.nextTile.x, s.nextTile.y, COLORS.dirtBord, 3);
         }
-        s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y), true);
+        s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), targetX, targetY, true);
       } else {
-        s.x += (dx / dist) * s.speed * dt;
-        s.y += (dy / dist) * s.speed * dt;
-        // Dig through dirt during movement
+        s.x += (dx / dist) * moveSpeed * dt;
+        s.y += (dy / dist) * moveSpeed * dt;
         const tx = Math.round(s.x), ty = Math.round(s.y);
         if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS && map[ty][tx] === T.DIRT) {
           map[ty][tx] = T.DUG;
+          if (lastDugTime[ty]) lastDugTime[ty][tx] = roundTimer;
           spawnParticles(tx, ty, COLORS.dirtBord, 2);
         }
-        // Update direction for rendering
         if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? 'right' : 'left';
         else s.dir = dy > 0 ? 'down' : 'up';
       }
     }
 
-    // Shoot at enemy queen if close and in line
+    // Shoot at enemies
     s.shootCooldown -= dt;
     if (s.shootCooldown <= 0) {
-      const edx = Math.round(enemy.x) - Math.round(s.x);
-      const edy = Math.round(enemy.y) - Math.round(s.y);
-      if ((edx === 0 && Math.abs(edy) <= 5) || (edy === 0 && Math.abs(edx) <= 5)) {
-        const bdir = edx === 0 ? (edy > 0 ? 'down' : 'up') : (edx > 0 ? 'right' : 'left');
-        const bdx = { left: -1, right: 1, up: 0, down: 0 }[bdir];
-        const bdy = { left: 0, right: 0, up: -1, down: 1 }[bdir];
-        bullets.push({ x: s.x + 0.5, y: s.y + 0.5, dx: bdx, dy: bdy, speed: 5, owner: s.colony, blast: 1 });
-        s.shootCooldown = 1.5;
+      const shootTargets = [enemy];
+      if (s.role === 'defend') {
+        for (const es of soldiers) { if (es.colony !== s.colony) shootTargets.push(es); }
+      }
+      for (const target of shootTargets) {
+        const edx = Math.round(target.x) - Math.round(s.x);
+        const edy = Math.round(target.y) - Math.round(s.y);
+        if ((edx === 0 && Math.abs(edy) <= 5) || (edy === 0 && Math.abs(edx) <= 5)) {
+          const bdir = edx === 0 ? (edy > 0 ? 'down' : 'up') : (edx > 0 ? 'right' : 'left');
+          const bdx = { left: -1, right: 1, up: 0, down: 0 }[bdir];
+          const bdy = { left: 0, right: 0, up: -1, down: 1 }[bdir];
+          bullets.push({ x: s.x + 0.5, y: s.y + 0.5, dx: bdx, dy: bdy, speed: 5, owner: s.colony, blast: 1 });
+          s.shootCooldown = 1.5;
+          break;
+        }
       }
     }
   }
@@ -423,14 +500,18 @@ function updateMound(dt) {
     } else if (m.state === 'CLAIMED') {
       m.spawnTimer -= dt;
       if (m.spawnTimer <= 0 && m.soldiersRemaining > 0) {
+        const swarmActive = activeModifiers.includes('SWARM');
         soldiers.push({
           x: m.x, y: m.y, dir: 'up', hp: 1, speed: 3.5,
-          colony: m.claimedBy, lifetime: 100, pathTimer: 0,
+          colony: m.claimedBy, lifetime: swarmActive ? 50 : 100, pathTimer: 0,
           nextTile: null, shootCooldown: 1,
+          role: 'attack',
+          flankX: Math.floor(gameRandom() * 7) - 3,
+          flankY: Math.floor(gameRandom() * 7) - 3,
         });
         playSoldierSpawn();
         m.soldiersRemaining--;
-        m.spawnTimer = 2.5;
+        m.spawnTimer = swarmActive ? 1.25 : 2.5;
       }
       if (m.soldiersRemaining <= 0 && m.spawnTimer <= 0) {
         mounds.splice(i, 1);

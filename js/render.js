@@ -321,6 +321,22 @@ function draw() {
     }
   }
 
+  // Draw toxic pools
+  for (const tp of toxicPools) {
+    const tpx = tp.x * TILE, tpy = tp.y * TILE;
+    ctx.fillStyle = 'rgba(68,204,68,0.25)';
+    ctx.fillRect(tpx, tpy, TILE, TILE);
+    // Bubbles
+    const bPhase = now / 400;
+    ctx.fillStyle = 'rgba(68,204,68,0.6)';
+    ctx.beginPath();
+    ctx.arc(tpx + TILE * 0.3, tpy + TILE * 0.6 + Math.sin(bPhase) * 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(tpx + TILE * 0.7, tpy + TILE * 0.4 + Math.sin(bPhase + 2) * 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Draw worms (only visible once dirt is dug away)
   for (const w of worms) {
     const tile = map[w.y][w.x];
@@ -334,7 +350,9 @@ function draw() {
   // Draw soldiers
   for (const s of soldiers) {
     const soldierOwner = queens.find(q => q.colony === s.colony);
-    drawAnt(s.x, s.y, s.dir, soldierOwner ? soldierOwner.color : '#888', 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100, undefined, soldierOwner ? soldierOwner.charType : 'ANT');
+    // Kamikaze soldiers flash red
+    const solColor = s.role === 'kamikaze' && Math.floor(now / 100) % 2 === 0 ? '#FF4444' : (soldierOwner ? soldierOwner.color : '#888');
+    drawAnt(s.x, s.y, s.dir, solColor, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100, undefined, soldierOwner ? soldierOwner.charType : 'ANT');
   }
 
   // Draw anteater
@@ -504,6 +522,22 @@ function draw() {
   }
   ctx.globalAlpha = 1;
 
+  // Fog of war overlay
+  if (fogVisible.length > 0) {
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (fogVisible[y] && fogVisible[y][x]) continue;
+        const px = x * TILE, py = y * TILE;
+        if (fogExplored[y] && fogExplored[y][x]) {
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        } else {
+          ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        }
+        ctx.fillRect(px, py, TILE, TILE);
+      }
+    }
+  }
+
   // Vignette overlay
   ctx.drawImage(vignetteCanvas, 0, 0);
 
@@ -520,6 +554,12 @@ function draw() {
 
   // Draw HUD (outside shake transform)
   drawHUD();
+
+  // Draw mini-map
+  drawMiniMap();
+
+  // Draw active mutator indicators
+  drawMutatorHUD();
 
   // Countdown overlay
   if (gameState === STATE.COUNTDOWN) {
@@ -541,6 +581,19 @@ function draw() {
     ctx.font = '18px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('ROUND ' + roundNum, W / 2, H / 2 - 50);
+    // Show active mutators
+    if (activeModifiers.length > 0) {
+      let my = H / 2 + 60;
+      for (const modId of activeModifiers) {
+        const mod = MUTATORS.find(m => m.id === modId);
+        if (mod) {
+          ctx.fillStyle = mod.color;
+          ctx.font = 'bold 16px monospace';
+          ctx.fillText('[' + mod.icon + '] ' + mod.name.toUpperCase(), W / 2, my);
+          my += 22;
+        }
+      }
+    }
   }
 
   // Round end overlay — focus on WINNER
@@ -1344,6 +1397,78 @@ function drawHUD() {
   ctx.fillText('WASD+SPACE  Q:special', 8, H - 8);
   ctx.textAlign = 'right';
   ctx.fillText('ARROWS+ENTER  RShift:special', W - 8, H - 8);
+}
+
+// ─── Mini-Map ─────────────────────────────────────────────────
+function drawMiniMap() {
+  const mmW = 120, mmH = Math.floor(mmW * (ROWS / COLS));
+  const mmX = W - mmW - 8, mmY = 62;
+  const sx = mmW / COLS, sy = mmH / ROWS;
+
+  // Background
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+
+  // Terrain
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      // Only show explored tiles
+      if (fogExplored.length && fogExplored[y] && !fogExplored[y][x]) continue;
+      const t = map[y][x];
+      if (t === T.DIRT) ctx.fillStyle = '#3A2A15';
+      else if (t === T.ROCK) ctx.fillStyle = '#555';
+      else if (t === T.PUDDLE) ctx.fillStyle = '#2855A0';
+      else if (t === T.DUG || t === T.TUNNEL || t === T.LEAF) ctx.fillStyle = '#221A0C';
+      else continue;
+      ctx.fillRect(mmX + x * sx, mmY + y * sy, Math.ceil(sx), Math.ceil(sy));
+    }
+  }
+
+  // Queens
+  for (const q of queens) {
+    if (q.dead) continue;
+    // Only show if visible or own
+    if (fogVisible.length && fogVisible[Math.round(q.y)] && !fogVisible[Math.round(q.y)][Math.round(q.x)]) continue;
+    ctx.fillStyle = q.color;
+    ctx.fillRect(mmX + q.x * sx - 1, mmY + q.y * sy - 1, 3, 3);
+  }
+
+  // Own soldiers as tiny dots
+  for (const s of soldiers) {
+    const owner = queens.find(q => q.colony === s.colony);
+    ctx.fillStyle = owner ? owner.color : '#888';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(mmX + s.x * sx, mmY + s.y * sy, 1.5, 1.5);
+  }
+  ctx.globalAlpha = 1;
+
+  // Mounds
+  for (const m of mounds) {
+    if (fogVisible.length && fogVisible[m.y] && !fogVisible[m.y][m.x]) continue;
+    ctx.fillStyle = '#E8C840';
+    ctx.fillRect(mmX + m.x * sx - 1, mmY + m.y * sy - 1, 2, 2);
+  }
+}
+
+// ─── Mutator HUD ──────────────────────────────────────────────
+function drawMutatorHUD() {
+  if (activeModifiers.length === 0) return;
+  const startX = W / 2 - activeModifiers.length * 50;
+  const y = 42;
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < activeModifiers.length; i++) {
+    const mod = MUTATORS.find(m => m.id === activeModifiers[i]);
+    if (!mod) continue;
+    const mx = startX + i * 100 + 50;
+    ctx.fillStyle = mod.color;
+    ctx.globalAlpha = 0.8;
+    ctx.fillText('[' + mod.icon + '] ' + mod.name.toUpperCase(), mx, y);
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawNarrative() {
