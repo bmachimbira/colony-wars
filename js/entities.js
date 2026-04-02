@@ -10,6 +10,10 @@ function createQueen(x, y, colony, controls) {
 
 // ─── Bullet Creation ─────────────────────────────────────────
 function fireBullet(q) {
+  // Limit projectiles per player
+  const playerBullets = bullets.filter(b => b.owner === q.colony).length;
+  if (playerBullets >= MAX_BULLETS_PER_PLAYER) return;
+
   const dx = { left: -1, right: 1, up: 0, down: 0 }[q.dir];
   const dy = { left: 0, right: 0, up: -1, down: 1 }[q.dir];
   const qx = Math.round(q.x), qy = Math.round(q.y);
@@ -104,20 +108,20 @@ function updateQueen(q, dt) {
   }
 
   // Check spawn mound claim
-  if (mound && mound.state === 'ACTIVE') {
-    if (Math.round(q.x) === mound.x && Math.round(q.y) === mound.y) {
-      mound.state = 'CLAIMED';
-      mound.claimedBy = q.colony;
-      mound.soldiersRemaining = 3;
-      mound.spawnTimer = 0.5;
+  for (const m of mounds) {
+    if (m.state === 'ACTIVE' && Math.round(q.x) === m.x && Math.round(q.y) === m.y) {
+      m.state = 'CLAIMED';
+      m.claimedBy = q.colony;
+      m.soldiersRemaining = 3;
+      m.spawnTimer = 0.5;
     }
   }
 
   // Check power-up collection
-  if (powerUp) {
-    if (Math.round(q.x) === powerUp.x && Math.round(q.y) === powerUp.y) {
-      applyPowerUp(q, powerUp);
-      powerUp = null;
+  for (let pi = powerUps.length - 1; pi >= 0; pi--) {
+    if (Math.round(q.x) === powerUps[pi].x && Math.round(q.y) === powerUps[pi].y) {
+      applyPowerUp(q, powerUps[pi]);
+      powerUps.splice(pi, 1);
     }
   }
 }
@@ -192,6 +196,24 @@ function updateBullets(dt) {
       }
     }
   }
+
+  // Bullet-bullet collision (destroy each other)
+  const toRemove = new Set();
+  for (let i = 0; i < bullets.length; i++) {
+    for (let j = i + 1; j < bullets.length; j++) {
+      if (bullets[i].owner !== bullets[j].owner) {
+        if (Math.abs(bullets[i].x - bullets[j].x) < 0.5 && Math.abs(bullets[i].y - bullets[j].y) < 0.5) {
+          spawnParticles(Math.floor(bullets[i].x), Math.floor(bullets[i].y), '#88FF44', 4);
+          toRemove.add(i);
+          toRemove.add(j);
+        }
+      }
+    }
+  }
+  if (toRemove.size > 0) {
+    const indices = [...toRemove].sort((a, b) => b - a);
+    for (const idx of indices) bullets.splice(idx, 1);
+  }
 }
 
 // ─── Soldiers ────────────────────────────────────────────────
@@ -208,11 +230,11 @@ function updateSoldiers(dt) {
     const enemy = queens.find(q => q.colony !== s.colony);
     if (!enemy) continue;
 
-    // BFS pathfind every 2 seconds
+    // BFS pathfind every 2 seconds (soldiers can dig through dirt)
     s.pathTimer -= dt;
     if (s.pathTimer <= 0 || !s.nextTile) {
       s.pathTimer = 2;
-      s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y));
+      s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y), true);
     }
 
     // Move toward next tile
@@ -223,10 +245,21 @@ function updateSoldiers(dt) {
       if (dist < 0.1) {
         s.x = s.nextTile.x;
         s.y = s.nextTile.y;
-        s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y));
+        // Dig through dirt on arrival
+        if (map[s.nextTile.y] && map[s.nextTile.y][s.nextTile.x] === T.DIRT) {
+          map[s.nextTile.y][s.nextTile.x] = T.DUG;
+          spawnParticles(s.nextTile.x, s.nextTile.y, COLORS.dirtBord, 3);
+        }
+        s.nextTile = bfsPath(Math.round(s.x), Math.round(s.y), Math.round(enemy.x), Math.round(enemy.y), true);
       } else {
         s.x += (dx / dist) * s.speed * dt;
         s.y += (dy / dist) * s.speed * dt;
+        // Dig through dirt during movement
+        const tx = Math.round(s.x), ty = Math.round(s.y);
+        if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS && map[ty][tx] === T.DIRT) {
+          map[ty][tx] = T.DUG;
+          spawnParticles(tx, ty, COLORS.dirtBord, 2);
+        }
         // Update direction for rendering
         if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? 'right' : 'left';
         else s.dir = dy > 0 ? 'down' : 'up';
@@ -253,32 +286,33 @@ function updateSoldiers(dt) {
 function updateMound(dt) {
   moundTimer -= dt;
 
-  if (mound) {
-    if (mound.state === 'ACTIVE') {
-      mound.activeTimer -= dt;
-      if (mound.activeTimer <= 0) {
-        mound = null;
-        moundTimer = 5 + Math.random() * 5;
+  // Update existing mounds
+  for (let i = mounds.length - 1; i >= 0; i--) {
+    const m = mounds[i];
+    if (m.state === 'ACTIVE') {
+      m.activeTimer -= dt;
+      if (m.activeTimer <= 0) {
+        mounds.splice(i, 1);
       }
-    } else if (mound.state === 'CLAIMED') {
-      mound.spawnTimer -= dt;
-      if (mound.spawnTimer <= 0 && mound.soldiersRemaining > 0) {
-        // Spawn soldier
+    } else if (m.state === 'CLAIMED') {
+      m.spawnTimer -= dt;
+      if (m.spawnTimer <= 0 && m.soldiersRemaining > 0) {
         soldiers.push({
-          x: mound.x, y: mound.y, dir: 'up', hp: 1, speed: 3.5,
-          colony: mound.claimedBy, lifetime: 20, pathTimer: 0,
+          x: m.x, y: m.y, dir: 'up', hp: 1, speed: 3.5,
+          colony: m.claimedBy, lifetime: 100, pathTimer: 0,
           nextTile: null, shootCooldown: 1,
         });
-        mound.soldiersRemaining--;
-        mound.spawnTimer = 2.5;
+        m.soldiersRemaining--;
+        m.spawnTimer = 2.5;
       }
-      if (mound.soldiersRemaining <= 0 && mound.spawnTimer <= 0) {
-        mound = null;
-        moundTimer = 5 + Math.random() * 5;
+      if (m.soldiersRemaining <= 0 && m.spawnTimer <= 0) {
+        mounds.splice(i, 1);
       }
     }
-  } else if (moundTimer <= 0 && roundTimer > 5) {
-    // Spawn new mound
+  }
+
+  // Spawn new mound (5x more often, max 3 at once)
+  if (moundTimer <= 0 && roundTimer > 5 && mounds.length < 3) {
     let mx, my, attempts = 0;
     do {
       mx = Math.floor(Math.random() * COLS);
@@ -286,12 +320,15 @@ function updateMound(dt) {
       attempts++;
     } while (attempts < 100 && (map[my][mx] !== T.DUG ||
       (Math.abs(mx - queens[0].x) + Math.abs(my - queens[0].y) < 5) ||
-      (Math.abs(mx - queens[1].x) + Math.abs(my - queens[1].y) < 5)));
+      (Math.abs(mx - queens[1].x) + Math.abs(my - queens[1].y) < 5) ||
+      mounds.some(m => Math.abs(mx - m.x) + Math.abs(my - m.y) < 8) ||
+      powerUps.some(p => Math.abs(mx - p.x) + Math.abs(my - p.y) < 6) ||
+      !bfsConnected(mx, my, Math.round(queens[0].x), Math.round(queens[0].y))));
 
     if (attempts < 100) {
-      mound = { x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 };
+      mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
     }
-    moundTimer = 5 + Math.random() * 5;
+    moundTimer = 1 + Math.random() * 1;
   }
 }
 
@@ -299,37 +336,42 @@ function updateMound(dt) {
 function updatePowerUp(dt) {
   powerUpTimer -= dt;
 
-  if (powerUp) {
-    powerUp.despawnTimer -= dt;
-    if (powerUp.despawnTimer <= 0) {
-      powerUp = null;
-      powerUpTimer = 5;
+  // Update existing powerups
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    powerUps[i].despawnTimer -= dt;
+    if (powerUps[i].despawnTimer <= 0) {
+      powerUps.splice(i, 1);
     }
-  } else if (powerUpTimer <= 0 && roundTimer > 3) {
+  }
+
+  // Spawn new powerup (5x more often, max 3 at once)
+  if (powerUpTimer <= 0 && roundTimer > 3 && powerUps.length < 3) {
     let px, py, attempts = 0;
     do {
       px = Math.floor(Math.random() * COLS);
       py = Math.floor(Math.random() * ROWS);
       attempts++;
-    } while (attempts < 100 && map[py][px] !== T.DUG);
+    } while (attempts < 100 && (map[py][px] !== T.DUG ||
+      powerUps.some(p => Math.abs(px - p.x) + Math.abs(py - p.y) < 6) ||
+      mounds.some(m => Math.abs(px - m.x) + Math.abs(py - m.y) < 6)));
 
     if (attempts < 100) {
-      powerUp = {
+      powerUps.push({
         x: px, y: py,
         type: POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)],
         despawnTimer: 15,
-      };
+      });
     }
-    powerUpTimer = 5;
+    powerUpTimer = 1;
   }
 }
 
 function applyPowerUp(q, pu) {
   q.activePowerUp = pu.type;
   switch (pu.type) {
-    case 'SUGAR': q.powerUpTimer = 16; break;
-    case 'RAPID': q.powerUpTimer = 16; break;
+    case 'SUGAR': q.powerUpTimer = 80; break;
+    case 'RAPID': q.powerUpTimer = 80; break;
     case 'SHIELD': break; // lasts until hit
-    case 'MEGA': q.megaShots = 6; break;
+    case 'MEGA': q.megaShots = 30; break;
   }
 }

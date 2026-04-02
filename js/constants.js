@@ -29,3 +29,4 @@ const STATE = { TITLE: 0, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4,
 
 // Power-up types
 const POWER_TYPES = ['SUGAR', 'RAPID', 'SHIELD', 'MEGA'];
+const MAX_BULLETS_PER_PLAYER = 3;

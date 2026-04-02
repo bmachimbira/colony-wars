@@ -474,55 +474,55 @@ Each phase builds on the previous and results in a playable state.
 ### Phase 1: Core (60 min)
 **Goal:** Two queens moving on a static map, shooting and destroying dirt.
 
-- [ ] HTML boilerplate + canvas setup (672×528, scaled)
-- [ ] Tile grid data structure and rendering
-- [ ] Hard-coded test map (dirt, rock, tunnel)
-- [ ] Player input handling (WASD + Arrows)
-- [ ] Queen movement with grid snapping and smooth interpolation
-- [ ] Queen rendering (three-segment body, legs, antennae)
-- [ ] Bullet firing, travel, and dirt destruction
-- [ ] Basic collision detection (queen vs. walls, bullet vs. tiles)
-- [ ] Bullet vs. queen damage
+- [x] HTML boilerplate + canvas setup (672×528, scaled)
+- [x] Tile grid data structure and rendering
+- [x] Hard-coded test map (dirt, rock, tunnel)
+- [x] Player input handling (WASD + Arrows)
+- [x] Queen movement with grid snapping and smooth interpolation
+- [x] Queen rendering (three-segment body, legs, antennae)
+- [x] Bullet firing, travel, and dirt destruction
+- [x] Basic collision detection (queen vs. walls, bullet vs. tiles)
+- [x] Bullet vs. queen damage
 
 **Playable checkpoint:** Two queens can move, shoot, destroy terrain, and damage each other.
 
 ### Phase 2: Round System (30 min)
 **Goal:** Sudden death rounds with match scoring.
 
-- [ ] Queen HP display and damage visual states
-- [ ] Death detection → round end trigger
-- [ ] Round end sequence (explosion, banner, score)
-- [ ] Game state machine (TITLE → COUNTDOWN → PLAYING → ROUND_END → MATCH_END)
-- [ ] Match scoring (best of 5)
-- [ ] Title screen
-- [ ] Countdown screen (3-2-1)
+- [x] Queen HP display and damage visual states
+- [x] Death detection → round end trigger
+- [x] Round end sequence (explosion, banner, score)
+- [x] Game state machine (TITLE → COUNTDOWN → PLAYING → ROUND_END → MATCH_END)
+- [x] Match scoring (best of 5)
+- [x] Title screen
+- [x] Countdown screen (3-2-1)
 
 **Playable checkpoint:** Full game loop — title → play → round end → next round → match winner.
 
 ### Phase 3: Map Generation (45 min)
 **Goal:** Every round gets a unique, fair, procedural map.
 
-- [ ] Queen chamber placement (3×3 clear zones)
-- [ ] Rock cluster placement (3–5 clusters)
-- [ ] Dirt fill
-- [ ] Tunnel corridor carving (connecting both chambers)
-- [ ] Puddle placement (never blocking only path)
-- [ ] Leaf litter placement
-- [ ] BFS validation (both chambers reachable)
+- [x] Queen chamber placement (3×3 clear zones)
+- [x] Rock cluster placement (3–5 clusters)
+- [x] Dirt fill
+- [x] Tunnel corridor carving (connecting both chambers)
+- [x] Puddle placement (never blocking only path)
+- [x] Leaf litter placement
+- [x] BFS validation (both chambers reachable)
 
 **Playable checkpoint:** Every round has a fresh, unique, playable map.
 
 ### Phase 4: Spawn Mounds (45 min)
 **Goal:** The core strategic mechanic — queens risk themselves to claim mounds and spawn allies.
 
-- [ ] Mound manager — timer, random placement, lifecycle states
-- [ ] Mound rendering (gold pulse, colony color when claimed)
-- [ ] Queen claims mound on contact
-- [ ] Allied soldier spawning (3–4 per mound, 1 every 2.5s)
-- [ ] Soldier AI — BFS pathfind toward enemy queen
-- [ ] Soldier shooting and combat
-- [ ] Soldier 20s lifetime timer + fade-out death
-- [ ] Mound depletion and removal
+- [x] Mound manager — timer, random placement, lifecycle states
+- [x] Mound rendering (gold pulse, colony color when claimed)
+- [x] Queen claims mound on contact
+- [x] Allied soldier spawning (3–4 per mound, 1 every 2.5s)
+- [x] Soldier AI — BFS pathfind toward enemy queen
+- [x] Soldier shooting and combat
+- [x] Soldier 20s lifetime timer + fade-out death
+- [x] Mound depletion and removal
 
 **Playable checkpoint:** Spawn mounds appear, queens can claim them, allied soldiers fight for the claiming colony. This is where the game gets INTERESTING.
 
@@ -532,22 +532,21 @@ Each phase builds on the previous and results in a playable state.
 ### Phase 6: Power-Ups (20 min)
 **Goal:** Food crumb power-ups with temporary abilities.
 
-- [ ] Power-up spawn timer and placement
-- [ ] Collection on queen contact
-- [ ] Sugar Rush (2× speed, 8s)
-- [ ] Rapid Bite (3 bullets, 8s)
-- [ ] Chitin Shield (+1 HP absorb)
-- [ ] Mega Acid (3×3 destruction, 3 shots)
-- [ ] HUD power-up indicator
+- [x] Power-up spawn timer and placement
+- [x] Collection on queen contact
+- [x] Sugar Rush (2× speed, 8s)
+- [x] Rapid Bite (3 bullets, 8s)
+- [x] Chitin Shield (+1 HP absorb)
+- [x] Mega Acid (3×3 destruction, 3 shots)
+- [x] HUD power-up indicator
 
 **Playable checkpoint:** Power-ups add tactical variety and pickup decisions.
 
 ### Phase 7: Polish (10 min)
 **Goal:** Juice for the demo.
 
-- [ ] Ant bob animation during movement
-- [ ] Pheromone trail particles
-- [ ] Dirt destruction particle burst
+- [x] Ant bob animation during movement
+- [x] Dirt destruction particle burst
 - [ ] Screen shake on queen death
 - [ ] Smooth camera (if canvas larger than viewport)
 

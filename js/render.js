@@ -75,8 +75,8 @@ function draw() {
     }
   }
 
-  // Draw spawn mound
-  if (mound) {
+  // Draw spawn mounds
+  for (const mound of mounds) {
     const mx = mound.x * TILE, my = mound.y * TILE;
     const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
     if (mound.state === 'ACTIVE') {
@@ -97,8 +97,8 @@ function draw() {
     }
   }
 
-  // Draw power-up
-  if (powerUp) {
+  // Draw power-ups
+  for (const powerUp of powerUps) {
     const px = powerUp.x * TILE, py = powerUp.y * TILE;
     const pulse = Math.sin(performance.now() / 250) * 0.3 + 0.7;
     ctx.globalAlpha = pulse;

@@ -90,11 +90,11 @@ function startNewRound() {
   bullets = [];
   particles = [];
   soldiers = [];
-  mound = null;
-  powerUp = null;
+  mounds = [];
+  powerUps = [];
   roundTimer = 0;
-  moundTimer = 5;
-  powerUpTimer = 5;
+  moundTimer = 1;
+  powerUpTimer = 1;
   waveTimer = 30;
   waveCount = 0;
 

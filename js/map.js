@@ -83,7 +83,8 @@ function nearChamber(x, y, cx, cy) {
 function carveTunnel(x1, y1, x2, y2) {
   let x = x1, y = y1;
   while (x !== x2 || y !== y2) {
-    if (map[y][x] === T.DIRT) map[y][x] = T.DUG;
+    // Force through rocks to guarantee connectivity
+    if (map[y][x] !== T.DUG && map[y][x] !== T.TUNNEL) map[y][x] = T.DUG;
     if (Math.random() < 0.5) {
       // Add some width to tunnel
       if (y-1 >= 0 && map[y-1][x] === T.DIRT && Math.random() < 0.3) map[y-1][x] = T.DUG;
@@ -95,7 +96,7 @@ function carveTunnel(x1, y1, x2, y2) {
       y += y < y2 ? 1 : -1;
     }
   }
-  if (map[y][x] === T.DIRT) map[y][x] = T.DUG;
+  if (map[y][x] !== T.DUG && map[y][x] !== T.TUNNEL) map[y][x] = T.DUG;
 }
 
 function bfsConnected(x1, y1, x2, y2) {
@@ -126,7 +127,7 @@ function canWalk(tx, ty) {
   return t === T.DUG || t === T.TUNNEL || t === T.LEAF;
 }
 
-function bfsPath(sx, sy, ex, ey) {
+function bfsPath(sx, sy, ex, ey, allowDirt) {
   const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
   const parent = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
   const queue = [[sx, sy]];
@@ -149,7 +150,7 @@ function bfsPath(sx, sy, ex, ey) {
       const nx = cx + dx, ny = cy + dy;
       if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !visited[ny][nx]) {
         const t = map[ny][nx];
-        if (t !== T.ROCK && t !== T.PUDDLE && t !== T.DIRT) {
+        if (t !== T.ROCK && t !== T.PUDDLE && (allowDirt || t !== T.DIRT)) {
           visited[ny][nx] = true;
           parent[ny][nx] = [cx, cy];
           queue.push([nx, ny]);
