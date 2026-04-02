@@ -413,11 +413,18 @@ function updateMutators(dt) {
           }
         }
       }
-      // Damage queens caught in the cave-in ring
+      // Damage queens caught in the cave-in ring and push inward
       for (const q of queens) {
+        if (q.dead) continue;
         const qx = Math.round(q.x), qy = Math.round(q.y);
-        if (qx < caveinRing || qx >= COLS - caveinRing || qy < caveinRing || qy >= ROWS - caveinRing) {
-          if (q.invTimer <= 0 && !q.dead) {
+        const inRing = qx < caveinRing || qx >= COLS - caveinRing || qy < caveinRing || qy >= ROWS - caveinRing;
+        if (inRing) {
+          // Push queen inward
+          if (qx < caveinRing) q.x = caveinRing;
+          if (qx >= COLS - caveinRing) q.x = COLS - caveinRing - 1;
+          if (qy < caveinRing) q.y = caveinRing;
+          if (qy >= ROWS - caveinRing) q.y = ROWS - caveinRing - 1;
+          if (q.invTimer <= 0) {
             q.hp--;
             q.invTimer = 0.5;
             screenShake = 8;
@@ -425,13 +432,15 @@ function updateMutators(dt) {
             spawnFloatingText(q.x, q.y, 'CRUSHED!', '#8A6A4A');
             playHit();
           }
-          // Push queen inward if alive
-          if (!q.dead && q.hp > 0) {
-            if (qx < caveinRing) q.x = caveinRing;
-            if (qx >= COLS - caveinRing) q.x = COLS - caveinRing - 1;
-            if (qy < caveinRing) q.y = caveinRing;
-            if (qy >= ROWS - caveinRing) q.y = ROWS - caveinRing - 1;
-          }
+        }
+        // Check if queen is trapped (all 4 neighbors are unwalkable) — instant kill
+        const cx = Math.round(q.x), cy = Math.round(q.y);
+        if (!canWalk(cx, cy) || (!canWalk(cx-1,cy) && !canWalk(cx+1,cy) && !canWalk(cx,cy-1) && !canWalk(cx,cy+1))) {
+          q.hp = 0;
+          screenShake = 10;
+          spawnParticles(cx, cy, q.color, 20);
+          spawnFloatingText(q.x, q.y, 'TRAPPED!', '#CC4444');
+          playDeath();
         }
       }
       // Kill soldiers caught in cave-in
