@@ -69,17 +69,16 @@ function update(dt) {
     return;
   }
 
-  if (gameState === STATE.PAUSED) {
-    if (keys['Escape']) {
-      keys['Escape'] = false;
-      gameState = STATE.PLAYING;
-    }
-    return;
-  }
-
-  if (gameState === STATE.PLAYING && keys['Escape']) {
+  // Escape exits to character select from any gameplay state
+  if (keys['Escape'] && (gameState === STATE.PLAYING || gameState === STATE.PAUSED || gameState === STATE.COUNTDOWN || gameState === STATE.ROUND_END)) {
     keys['Escape'] = false;
-    gameState = STATE.PAUSED;
+    scores = [0, 0];
+    roundNum = 0;
+    gameState = STATE.CHAR_SELECT;
+    charSelect[0].ready = false;
+    charSelect[1].ready = false;
+    stopMusic();
+    for (const k in keys) keys[k] = false;
     return;
   }
 

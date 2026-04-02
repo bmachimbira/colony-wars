@@ -538,17 +538,12 @@ function draw() {
     ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H / 2 + 55);
   }
 
-  // Pause overlay
-  if (gameState === STATE.PAUSED) {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 48px monospace';
+  // ESC hint
+  if (gameState === STATE.PLAYING) {
+    ctx.fillStyle = '#444';
+    ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('PAUSED', W / 2, H / 2 - 10);
-    ctx.fillStyle = '#999';
-    ctx.font = '16px monospace';
-    ctx.fillText('Press ESC to resume', W / 2, H / 2 + 35);
+    ctx.fillText('ESC to quit', W / 2, H - 8);
   }
 }
 
