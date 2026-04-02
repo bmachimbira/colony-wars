@@ -6,7 +6,12 @@ const ctx = canvas.getContext('2d');
 
 // ─── Input ───────────────────────────────────────────────────
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+window.addEventListener('keydown', e => {
+  // Don't intercept keys when typing in an input/textarea (multiplayer UI)
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  keys[e.code] = true;
+  e.preventDefault();
+});
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 // ─── Game State ──────────────────────────────────────────────

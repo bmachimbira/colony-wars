@@ -93,6 +93,13 @@ function showMultiplayerMenu() {
       display: 'block', textTransform: 'uppercase',
     });
     input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation(); // prevent game from stealing keys
+      if (e.key === 'Enter') {
+        const joinBtn = input.parentElement.querySelector('button');
+        if (joinBtn) joinBtn.click();
+      }
+    });
     return input;
   }
 
@@ -111,7 +118,10 @@ function showMultiplayerMenu() {
   steps.menu.appendChild(makeHeading('ONLINE MULTIPLAYER'));
   steps.menu.appendChild(makeText('Play with a friend \u2014 no server needed'));
   steps.menu.appendChild(makeBtn('HOST GAME', '#3066C8', () => mpHost(steps)));
-  steps.menu.appendChild(makeBtn('JOIN GAME', '#3066C8', () => mpShowStep(steps, 'join')));
+  steps.menu.appendChild(makeBtn('JOIN GAME', '#3066C8', () => {
+    mpShowStep(steps, 'join');
+    setTimeout(() => { const inp = document.getElementById('mp-join-input'); if (inp) inp.focus(); }, 100);
+  }));
   steps.menu.appendChild(document.createElement('br'));
   steps.menu.appendChild(makeBtn('BACK', '#C83030', closeMultiplayerMenu));
 
