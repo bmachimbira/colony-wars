@@ -591,6 +591,11 @@ function drawNarrative() {
     ctx.fillText(line, W / 2, startY + i * lineHeight);
   }
 
+  // Pixel art illustration
+  if (NARRATIVE_ART[narrativePage]) {
+    NARRATIVE_ART[narrativePage](W / 2, startY + visibleLines.length * lineHeight + 20);
+  }
+
   // Blinking cursor at end of text
   if (!narrativePageReady && Math.sin(performance.now() / 300) > 0) {
     const lastLine = visibleLines[visibleLines.length - 1] || '';
