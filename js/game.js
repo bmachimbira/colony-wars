@@ -413,6 +413,36 @@ function updateMutators(dt) {
           }
         }
       }
+      // Damage queens caught in the cave-in ring
+      for (const q of queens) {
+        const qx = Math.round(q.x), qy = Math.round(q.y);
+        if (qx < caveinRing || qx >= COLS - caveinRing || qy < caveinRing || qy >= ROWS - caveinRing) {
+          if (q.invTimer <= 0 && !q.dead) {
+            q.hp--;
+            q.invTimer = 0.5;
+            screenShake = 8;
+            spawnParticles(qx, qy, q.color, 12);
+            spawnFloatingText(q.x, q.y, 'CRUSHED!', '#8A6A4A');
+            playHit();
+          }
+          // Push queen inward if alive
+          if (!q.dead && q.hp > 0) {
+            if (qx < caveinRing) q.x = caveinRing;
+            if (qx >= COLS - caveinRing) q.x = COLS - caveinRing - 1;
+            if (qy < caveinRing) q.y = caveinRing;
+            if (qy >= ROWS - caveinRing) q.y = ROWS - caveinRing - 1;
+          }
+        }
+      }
+      // Kill soldiers caught in cave-in
+      for (let si = soldiers.length - 1; si >= 0; si--) {
+        const s = soldiers[si];
+        const sx = Math.round(s.x), sy = Math.round(s.y);
+        if (sx < caveinRing || sx >= COLS - caveinRing || sy < caveinRing || sy >= ROWS - caveinRing) {
+          spawnParticles(sx, sy, '#888', 5);
+          soldiers.splice(si, 1);
+        }
+      }
       if (caveinRing <= 3) {
         spawnFloatingText(Math.floor(COLS / 2), Math.floor(ROWS / 2), 'CAVE-IN!', '#8A6A4A');
         announce('Cave in!');
