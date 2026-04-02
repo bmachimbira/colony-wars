@@ -1,5 +1,10 @@
 // ─── Update ──────────────────────────────────────────────────
 function update(dt) {
+  if (gameState === STATE.NARRATIVE) {
+    updateNarrative(dt);
+    return;
+  }
+
   if (gameState === STATE.TITLE) {
     if (Object.values(keys).some(v => v)) {
       gameState = STATE.GENERATING;
@@ -46,6 +51,20 @@ function update(dt) {
       // Clear all keys to prevent immediate restart
       for (const k in keys) keys[k] = false;
     }
+    return;
+  }
+
+  if (gameState === STATE.PAUSED) {
+    if (keys['Escape']) {
+      keys['Escape'] = false;
+      gameState = STATE.PLAYING;
+    }
+    return;
+  }
+
+  if (gameState === STATE.PLAYING && keys['Escape']) {
+    keys['Escape'] = false;
+    gameState = STATE.PAUSED;
     return;
   }
 
@@ -160,6 +179,50 @@ function startNewRound() {
 
   countdownTimer = 3;
   gameState = STATE.COUNTDOWN;
+}
+
+// ─── Narrative ───────────────────────────────────────────────
+function updateNarrative(dt) {
+  const page = NARRATIVE_PAGES[narrativePage];
+  const fullText = page.lines.join('\n');
+
+  // Typewriter effect
+  if (!narrativePageReady) {
+    narrativeCharTimer += dt;
+    const charsPerSec = 40;
+    narrativeCharIndex = Math.min(Math.floor(narrativeCharTimer * charsPerSec), fullText.length);
+    if (narrativeCharIndex >= fullText.length) {
+      narrativePageReady = true;
+    }
+  }
+
+  // Wait for key release before accepting next press
+  const anyKey = Object.values(keys).some(v => v);
+  if (!anyKey) {
+    narrativeKeyReleased = true;
+  }
+
+  if (anyKey && narrativeKeyReleased) {
+    narrativeKeyReleased = false;
+
+    if (!narrativePageReady) {
+      // Skip typewriter — show full page immediately
+      narrativeCharIndex = fullText.length;
+      narrativePageReady = true;
+    } else {
+      // Next page
+      narrativePage++;
+      if (narrativePage >= NARRATIVE_PAGES.length) {
+        gameState = STATE.TITLE;
+        // Clear keys so title doesn't instantly skip
+        for (const k in keys) keys[k] = false;
+      } else {
+        narrativeCharIndex = 0;
+        narrativeCharTimer = 0;
+        narrativePageReady = false;
+      }
+    }
+  }
 }
 
 // ─── Game Loop ───────────────────────────────────────────────
