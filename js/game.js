@@ -596,20 +596,51 @@ function gameLoop(time) {
 requestAnimationFrame(gameLoop);
 
 // ─── Character Selection ─────────────────────────────────────
+const charSelectCooldown = [0, 0, 0, 0]; // per-player input cooldown
+const CHAR_SELECT_DELAY = 0.18; // seconds between inputs
+
 function updateCharSelect() {
+  // Decrease cooldowns
+  for (let i = 0; i < charSelectCooldown.length; i++) {
+    if (charSelectCooldown[i] > 0) charSelectCooldown[i] -= 1/60;
+  }
+
   // P1: W/S to change character, A/D to change color, Space to ready
-  // Support both keyboard (clear key) and gamepad (edge-detected _gp0 keys)
-  if ((keys['KeyW'] || keys['_gp0Up']) && !charSelect[0].ready) { charSelect[0].charType = (charSelect[0].charType + 2) % 3; keys['KeyW'] = false; keys['_gp0Up'] = false; }
-  if ((keys['KeyS'] || keys['_gp0Down']) && !charSelect[0].ready) { charSelect[0].charType = (charSelect[0].charType + 1) % 3; keys['KeyS'] = false; keys['_gp0Down'] = false; }
-  if ((keys['KeyA'] || keys['_gp0Left']) && !charSelect[0].ready) { charSelect[0].colorIdx = (charSelect[0].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['KeyA'] = false; keys['_gp0Left'] = false; }
-  if ((keys['KeyD'] || keys['_gp0Right']) && !charSelect[0].ready) { charSelect[0].colorIdx = (charSelect[0].colorIdx + 1) % CHAR_COLORS.length; keys['KeyD'] = false; keys['_gp0Right'] = false; }
+  if ((keys['KeyW'] || keys['_gp0Up']) && !charSelect[0].ready && charSelectCooldown[0] <= 0) {
+    charSelect[0].charType = (charSelect[0].charType + 2) % 3;
+    charSelectCooldown[0] = CHAR_SELECT_DELAY; keys['KeyW'] = false; keys['_gp0Up'] = false;
+  }
+  if ((keys['KeyS'] || keys['_gp0Down']) && !charSelect[0].ready && charSelectCooldown[0] <= 0) {
+    charSelect[0].charType = (charSelect[0].charType + 1) % 3;
+    charSelectCooldown[0] = CHAR_SELECT_DELAY; keys['KeyS'] = false; keys['_gp0Down'] = false;
+  }
+  if ((keys['KeyA'] || keys['_gp0Left']) && !charSelect[0].ready && charSelectCooldown[0] <= 0) {
+    charSelect[0].colorIdx = (charSelect[0].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length;
+    charSelectCooldown[0] = CHAR_SELECT_DELAY; keys['KeyA'] = false; keys['_gp0Left'] = false;
+  }
+  if ((keys['KeyD'] || keys['_gp0Right']) && !charSelect[0].ready && charSelectCooldown[0] <= 0) {
+    charSelect[0].colorIdx = (charSelect[0].colorIdx + 1) % CHAR_COLORS.length;
+    charSelectCooldown[0] = CHAR_SELECT_DELAY; keys['KeyD'] = false; keys['_gp0Right'] = false;
+  }
   if (keys['Space']) { charSelect[0].ready = !charSelect[0].ready; keys['Space'] = false; }
 
   // P2: Arrows to change character/color, Enter to ready
-  if ((keys['ArrowUp'] || keys['_gp1Up']) && !charSelect[1].ready) { charSelect[1].charType = (charSelect[1].charType + 2) % 3; keys['ArrowUp'] = false; keys['_gp1Up'] = false; }
-  if ((keys['ArrowDown'] || keys['_gp1Down']) && !charSelect[1].ready) { charSelect[1].charType = (charSelect[1].charType + 1) % 3; keys['ArrowDown'] = false; keys['_gp1Down'] = false; }
-  if ((keys['ArrowLeft'] || keys['_gp1Left']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['ArrowLeft'] = false; keys['_gp1Left'] = false; }
-  if ((keys['ArrowRight'] || keys['_gp1Right']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + 1) % CHAR_COLORS.length; keys['ArrowRight'] = false; keys['_gp1Right'] = false; }
+  if ((keys['ArrowUp'] || keys['_gp1Up']) && !charSelect[1].ready && charSelectCooldown[1] <= 0) {
+    charSelect[1].charType = (charSelect[1].charType + 2) % 3;
+    charSelectCooldown[1] = CHAR_SELECT_DELAY; keys['ArrowUp'] = false; keys['_gp1Up'] = false;
+  }
+  if ((keys['ArrowDown'] || keys['_gp1Down']) && !charSelect[1].ready && charSelectCooldown[1] <= 0) {
+    charSelect[1].charType = (charSelect[1].charType + 1) % 3;
+    charSelectCooldown[1] = CHAR_SELECT_DELAY; keys['ArrowDown'] = false; keys['_gp1Down'] = false;
+  }
+  if ((keys['ArrowLeft'] || keys['_gp1Left']) && !charSelect[1].ready && charSelectCooldown[1] <= 0) {
+    charSelect[1].colorIdx = (charSelect[1].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length;
+    charSelectCooldown[1] = CHAR_SELECT_DELAY; keys['ArrowLeft'] = false; keys['_gp1Left'] = false;
+  }
+  if ((keys['ArrowRight'] || keys['_gp1Right']) && !charSelect[1].ready && charSelectCooldown[1] <= 0) {
+    charSelect[1].colorIdx = (charSelect[1].colorIdx + 1) % CHAR_COLORS.length;
+    charSelectCooldown[1] = CHAR_SELECT_DELAY; keys['ArrowRight'] = false; keys['_gp1Right'] = false;
+  }
   if (keys['Enter']) { charSelect[1].ready = !charSelect[1].ready; keys['Enter'] = false; }
 
   // In single player, P2 is always ready (AI)
