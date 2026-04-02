@@ -305,6 +305,7 @@ function updateMound(dt) {
 
     if (attempts < 100) {
       mound = { x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 };
+      playMoundAppear();
     }
     moundTimer = 5 + Math.random() * 5;
   }
@@ -334,6 +335,7 @@ function updatePowerUp(dt) {
         type: POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)],
         despawnTimer: 15,
       };
+      playPowerUpAppear();
     }
     powerUpTimer = 5;
   }

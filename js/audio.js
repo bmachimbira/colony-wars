@@ -185,6 +185,61 @@ function playSoldierSpawn() {
   osc.stop(t + 0.1);
 }
 
+function playMoundAppear() {
+  const t = audioCtx.currentTime;
+  // Mystical rising bubble — two detuned sines
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc1.type = 'sine';
+  osc2.type = 'sine';
+  osc1.frequency.setValueAtTime(350, t);
+  osc1.frequency.exponentialRampToValueAtTime(700, t + 0.25);
+  osc2.frequency.setValueAtTime(355, t);
+  osc2.frequency.exponentialRampToValueAtTime(710, t + 0.25);
+  gain.gain.setValueAtTime(0.1, t);
+  gain.gain.setValueAtTime(0.1, t + 0.15);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc1.connect(gain);
+  osc2.connect(gain);
+  gain.connect(masterGain);
+  osc1.start(t);
+  osc2.start(t);
+  osc1.stop(t + 0.3);
+  osc2.stop(t + 0.3);
+}
+
+function playPowerUpAppear() {
+  const t = audioCtx.currentTime;
+  // Quick sparkle pop — short high note + tiny noise
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1400, t);
+  osc.frequency.exponentialRampToValueAtTime(900, t + 0.12);
+  gain.gain.setValueAtTime(0.1, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + 0.12);
+  // Tiny pop noise
+  const bufferSize = Math.floor(audioCtx.sampleRate * 0.015);
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+  }
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const nGain = audioCtx.createGain();
+  nGain.gain.setValueAtTime(0.08, t);
+  nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+  noise.connect(nGain);
+  nGain.connect(masterGain);
+  noise.start(t);
+}
+
 function playWalk() {
   const t = audioCtx.currentTime;
   // Tiny click — ant footsteps on dirt
