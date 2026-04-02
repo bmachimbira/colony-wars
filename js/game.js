@@ -203,8 +203,19 @@ function startNewRound() {
 
 // ─── Narrative ───────────────────────────────────────────────
 function updateNarrative(dt) {
+  // Start music on first frame of narrative
+  if (!musicPlaying) startMusic();
+
   const page = NARRATIVE_PAGES[narrativePage];
   const fullText = page.lines.join('\n');
+
+  // ESC skips entire intro
+  if (keys['Escape']) {
+    keys['Escape'] = false;
+    gameState = STATE.TITLE;
+    for (const k in keys) keys[k] = false;
+    return;
+  }
 
   // Typewriter effect
   if (!narrativePageReady) {

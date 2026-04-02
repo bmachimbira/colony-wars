@@ -1004,7 +1004,7 @@ function drawNarrative() {
   ctx.fillStyle = '#444';
   ctx.font = '10px monospace';
   ctx.textAlign = 'right';
-  ctx.fillText('Press any key to skip', W - 20, H - 15);
+  ctx.fillText('ESC to skip intro', W - 20, H - 15);
 }
 
 function drawTitle() {
