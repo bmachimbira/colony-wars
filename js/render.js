@@ -530,6 +530,11 @@ function drawTitle() {
   ctx.fillStyle = COLORS.p2;
   ctx.textAlign = 'right';
   ctx.fillText('P2: ARROWS + ENTER', W / 2 + 150, H / 2 + 110);
+
+  ctx.fillStyle = '#666';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 135);
 }
 
 function drawMatchEnd() {

@@ -134,6 +134,7 @@ function gameLoop(time) {
   try {
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
+    pollGamepads();
     update(dt);
     draw();
   } catch (e) {
