@@ -161,7 +161,7 @@ function draw() {
       drawWorm(w, 1);
     } else if (tile === T.DIRT) {
       // Subtle hint — small wiggle poking out of the dirt
-      drawWorm(w, 0.25);
+      drawWorm(w, 0.5);
     }
   }
 
