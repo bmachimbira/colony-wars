@@ -11,7 +11,20 @@ function update(dt) {
       showMultiplayerMenu();
       return;
     }
-    if (Object.values(keys).some(v => v)) {
+    if (keys['Digit1']) {
+      // Single player vs AI
+      singlePlayer = true;
+      playerCount = 2;
+      gameState = STATE.CHAR_SELECT;
+      charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
+      charSelect[1] = { charType: Math.floor(Math.random() * 3), colorIdx: 1 + Math.floor(Math.random() * 7), ready: true };
+      for (const k in keys) keys[k] = false;
+      startCharSelectMusic();
+      return;
+    }
+    if (keys['Digit2'] || Object.values(keys).some(v => v)) {
+      singlePlayer = false;
+      playerCount = 2;
       gameState = STATE.CHAR_SELECT;
       charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
       charSelect[1] = { charType: 0, colorIdx: 1, ready: false };
@@ -140,6 +153,9 @@ function update(dt) {
     if (d.y > H) d.y = 0;
   }
 
+  // Update AI
+  updateAI(dt);
+
   // Update queens
   for (const q of queens) {
     updateQueen(q, dt);
@@ -181,6 +197,15 @@ function update(dt) {
 
   // Update droppings
   updateDroppings(dt);
+
+  // Tunnel regrowth
+  updateRegrowth(dt);
+
+  // Mutator effects
+  updateMutators(dt);
+
+  // Update fog of war visibility
+  updateFog();
 
   // Check win condition — eliminate dead queens, last one standing wins
   for (let i = 0; i < queens.length; i++) {
@@ -256,6 +281,44 @@ function startNewRound() {
 
   droppings = [];
   floatingTexts = [];
+
+  // Initialize lastDugTime array
+  lastDugTime = [];
+  for (let y = 0; y < ROWS; y++) {
+    lastDugTime[y] = [];
+    for (let x = 0; x < COLS; x++) lastDugTime[y][x] = 0;
+  }
+  regrowthTimer = REGROWTH_INTERVAL;
+
+  // Initialize fog arrays
+  fogExplored = [];
+  fogVisible = [];
+  for (let y = 0; y < ROWS; y++) {
+    fogExplored[y] = [];
+    fogVisible[y] = [];
+    for (let x = 0; x < COLS; x++) {
+      fogExplored[y][x] = false;
+      fogVisible[y][x] = false;
+    }
+  }
+
+  // Pick round mutators
+  activeModifiers = [];
+  caveinTimer = CAVEIN_INTERVAL;
+  caveinRing = 0;
+  toxicPools = [];
+  toxicTimer = 10;
+  if (roundNum >= 2) {
+    const pool = MUTATORS.map(m => m.id);
+    // Shuffle with seeded PRNG
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(gameRandom() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const count = roundNum >= 3 ? 2 : 1;
+    activeModifiers = pool.slice(0, count);
+  }
+
   const defaultColors = ['#3066C8', '#C83030', '#30A830', '#C8A030'];
   queens = [];
   for (let i = 0; i < playerCount; i++) {
@@ -277,6 +340,171 @@ function startNewRound() {
 
   countdownTimer = 3;
   gameState = STATE.COUNTDOWN;
+
+  // Announce mutators
+  if (activeModifiers.length > 0) {
+    for (const modId of activeModifiers) {
+      const mod = MUTATORS.find(m => m.id === modId);
+      if (mod) announce(mod.name + ' active!');
+    }
+  }
+}
+
+// ─── Tunnel Regrowth ────────────────────────────────────────
+function updateRegrowth(dt) {
+  regrowthTimer -= dt;
+  if (regrowthTimer > 0) return;
+  regrowthTimer = REGROWTH_INTERVAL;
+
+  const tilesPerCycle = Math.min(roundNum, 5); // 1 in round 1, up to 5
+  let regrown = 0;
+  let attempts = 0;
+
+  while (regrown < tilesPerCycle && attempts < 200) {
+    attempts++;
+    const rx = Math.floor(gameRandom() * COLS);
+    const ry = Math.floor(gameRandom() * ROWS);
+    if (map[ry][rx] !== T.DUG) continue;
+    // Don't regrow recently dug tiles
+    if (roundTimer - lastDugTime[ry][rx] < REGROWTH_IMMUNITY) continue;
+    // Don't regrow near entities
+    let blocked = false;
+    for (const q of queens) {
+      if (Math.abs(Math.round(q.x) - rx) <= 2 && Math.abs(Math.round(q.y) - ry) <= 2) { blocked = true; break; }
+    }
+    if (blocked) continue;
+    for (const s of soldiers) {
+      if (Math.abs(Math.round(s.x) - rx) <= 1 && Math.abs(Math.round(s.y) - ry) <= 1) { blocked = true; break; }
+    }
+    if (blocked) continue;
+    for (const m of mounds) {
+      if (Math.abs(m.x - rx) <= 1 && Math.abs(m.y - ry) <= 1) { blocked = true; break; }
+    }
+    if (blocked) continue;
+
+    map[ry][rx] = T.DIRT;
+    spawnParticles(rx, ry, COLORS.dirt, 3);
+    regrown++;
+  }
+}
+
+// ─── Mutator Effects ────────────────────────────────────────
+function updateMutators(dt) {
+  // Cave-In: shrink map border
+  if (activeModifiers.includes('CAVEIN')) {
+    caveinTimer -= dt;
+    if (caveinTimer <= 0) {
+      caveinTimer = CAVEIN_INTERVAL;
+      caveinRing++;
+      screenShake = 4;
+      playDirtBreak();
+      // Convert border ring to rock
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (x < caveinRing || x >= COLS - caveinRing || y < caveinRing || y >= ROWS - caveinRing) {
+            if (map[y][x] !== T.ROCK) {
+              map[y][x] = T.ROCK;
+            }
+          }
+        }
+      }
+      if (caveinRing <= 3) {
+        spawnFloatingText(Math.floor(COLS / 2), Math.floor(ROWS / 2), 'CAVE-IN!', '#8A6A4A');
+        announce('Cave in!');
+      }
+    }
+  }
+
+  // Toxic: spawn acid pools
+  if (activeModifiers.includes('TOXIC')) {
+    toxicTimer -= dt;
+    if (toxicTimer <= 0) {
+      toxicTimer = 10;
+      let tx, ty, att = 0;
+      do {
+        tx = Math.floor(gameRandom() * COLS);
+        ty = Math.floor(gameRandom() * ROWS);
+        att++;
+      } while (att < 100 && map[ty][tx] !== T.DUG);
+      if (att < 100) {
+        toxicPools.push({ x: tx, y: ty, lifetime: 12, damageTimer: 0 });
+        spawnParticles(tx, ty, '#44CC44', 6);
+      }
+    }
+
+    // Update toxic pools
+    for (let i = toxicPools.length - 1; i >= 0; i--) {
+      const tp = toxicPools[i];
+      tp.lifetime -= dt;
+      if (tp.lifetime <= 0) { toxicPools.splice(i, 1); continue; }
+      tp.damageTimer -= dt;
+      // Damage queens standing on toxic
+      for (const q of queens) {
+        if (q.invTimer <= 0 && Math.round(q.x) === tp.x && Math.round(q.y) === tp.y) {
+          if (tp.damageTimer <= 0) {
+            q.hp--;
+            q.invTimer = 0.5;
+            screenShake = 3;
+            spawnParticles(tp.x, tp.y, '#44CC44', 8);
+            spawnFloatingText(q.x, q.y, 'TOXIC!', '#44CC44');
+            playHit();
+            tp.damageTimer = 2; // don't damage again for 2s
+          }
+        }
+      }
+    }
+  }
+}
+
+// ─── Fog of War ─────────────────────────────────────────────
+function updateFog() {
+  const visionRadius = activeModifiers.includes('DARKNESS') ? FOG_DARKNESS_RADIUS : FOG_VISION_RADIUS;
+
+  // Reset visibility
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      fogVisible[y][x] = false;
+    }
+  }
+
+  // Mark visible tiles from all local queens + their soldiers
+  for (const q of queens) {
+    if (q.dead) continue;
+    const qx = Math.round(q.x), qy = Math.round(q.y);
+    markVisible(qx, qy, visionRadius);
+  }
+
+  // Soldiers extend vision
+  for (const s of soldiers) {
+    markVisible(Math.round(s.x), Math.round(s.y), FOG_SOLDIER_RADIUS);
+  }
+
+  // Update explored map
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (fogVisible[y][x]) fogExplored[y][x] = true;
+    }
+  }
+}
+
+function markVisible(cx, cy, radius) {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+        fogVisible[ny][nx] = true;
+      }
+    }
+  }
+}
+
+// ─── Speed Multiplier (used by entities) ────────────────────
+function getSpeedMultiplier() {
+  let mult = 1;
+  if (activeModifiers.includes('FLOODED')) mult *= 0.7;
+  if (activeModifiers.includes('FRENZY')) mult *= 1.5;
+  return mult;
 }
 
 // ─── Narrative ───────────────────────────────────────────────
@@ -376,6 +604,9 @@ function updateCharSelect() {
   if ((keys['ArrowLeft'] || keys['_gp1Left']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['ArrowLeft'] = false; keys['_gp1Left'] = false; }
   if ((keys['ArrowRight'] || keys['_gp1Right']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + 1) % CHAR_COLORS.length; keys['ArrowRight'] = false; keys['_gp1Right'] = false; }
   if (keys['Enter']) { charSelect[1].ready = !charSelect[1].ready; keys['Enter'] = false; }
+
+  // In single player, P2 is always ready (AI)
+  if (singlePlayer) charSelect[1].ready = true;
 
   // Both ready — start game
   if (charSelect[0].ready && charSelect[1].ready) {

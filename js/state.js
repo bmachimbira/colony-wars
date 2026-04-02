@@ -154,6 +154,21 @@ let dustMotes = [];
 let droppings = [];
 let floatingTexts = []; // { x, y, text, color, life, maxLife }
 
+// ─── Round Mutators ─────────────────────────────────────────
+let activeModifiers = [];       // array of mutator IDs active this round
+let caveinTimer = 0;            // countdown to next cave-in shrink
+let caveinRing = 0;             // current border depth (tiles converted to rock)
+let toxicPools = [];            // { x, y, lifetime, damageTimer }
+let toxicTimer = 0;             // countdown to next toxic pool spawn
+
+// ─── Tunnel Regrowth ────────────────────────────────────────
+let regrowthTimer = 0;
+let lastDugTime = [];           // 2D array tracking when each tile was last dug
+
+// ─── Fog of War ─────────────────────────────────────────────
+let fogExplored = [];           // fogExplored[y][x] = true if any player has seen it
+let fogVisible = [];            // fogVisible[y][x] = true if currently in vision
+
 // Character selection state (up to 4 players)
 let charSelect = [
   { charType: 0, colorIdx: 0, ready: false }, // P1
