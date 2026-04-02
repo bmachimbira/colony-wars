@@ -7,8 +7,16 @@ function update(dt) {
 
   if (gameState === STATE.TITLE) {
     if (Object.values(keys).some(v => v)) {
-      gameState = STATE.GENERATING;
+      gameState = STATE.CHAR_SELECT;
+      charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
+      charSelect[1] = { charType: 0, colorIdx: 1, ready: false };
+      for (const k in keys) keys[k] = false;
     }
+    return;
+  }
+
+  if (gameState === STATE.CHAR_SELECT) {
+    updateCharSelect();
     return;
   }
 
@@ -47,7 +55,9 @@ function update(dt) {
     if (Object.values(keys).some(v => v)) {
       scores = [0, 0];
       roundNum = 0;
-      gameState = STATE.TITLE;
+      gameState = STATE.CHAR_SELECT;
+      charSelect[0].ready = false;
+      charSelect[1].ready = false;
       // Clear all keys to prevent immediate restart
       for (const k in keys) keys[k] = false;
     }
@@ -118,12 +128,15 @@ function update(dt) {
   // Power-up logic
   updatePowerUp(dt);
 
+  // Update droppings
+  updateDroppings(dt);
+
   // Check win condition
   for (let i = 0; i < queens.length; i++) {
     if (queens[i].hp <= 0) {
       roundWinner = 1 - i;
       scores[roundWinner]++;
-      spawnParticles(queens[i].x, queens[i].y, queens[i].colony === 'blue' ? COLORS.p1 : COLORS.p2, 30);
+      spawnParticles(queens[i].x, queens[i].y, queens[i].color, 30);
       playDeath();
       gameState = STATE.ROUND_END;
       roundEndTimer = 3;
@@ -169,13 +182,14 @@ function startNewRound() {
 
   const spawns = generateMap();
 
+  droppings = [];
   queens = [
-    createQueen(spawns.p1.x, spawns.p1.y, 'blue', {
-      up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space'
-    }),
-    createQueen(spawns.p2.x, spawns.p2.y, 'red', {
-      up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter'
-    }),
+    createQueen(spawns.p1.x, spawns.p1.y, 'p1', {
+      up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ'
+    }, CHAR_TYPES[charSelect[0].charType], CHAR_COLORS[charSelect[0].colorIdx]),
+    createQueen(spawns.p2.x, spawns.p2.y, 'p2', {
+      up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter', special: 'ShiftRight'
+    }, CHAR_TYPES[charSelect[1].charType], CHAR_COLORS[charSelect[1].colorIdx]),
   ];
 
   startMusic();
@@ -247,3 +261,48 @@ function gameLoop(time) {
 }
 
 requestAnimationFrame(gameLoop);
+
+// ─── Character Selection ─────────────────────────────────────
+function updateCharSelect() {
+  // P1: W/S to change character, A/D to change color, Space to ready
+  if (keys['KeyW'] && !charSelect[0].ready) { charSelect[0].charType = (charSelect[0].charType + 2) % 3; keys['KeyW'] = false; }
+  if (keys['KeyS'] && !charSelect[0].ready) { charSelect[0].charType = (charSelect[0].charType + 1) % 3; keys['KeyS'] = false; }
+  if (keys['KeyA'] && !charSelect[0].ready) { charSelect[0].colorIdx = (charSelect[0].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['KeyA'] = false; }
+  if (keys['KeyD'] && !charSelect[0].ready) { charSelect[0].colorIdx = (charSelect[0].colorIdx + 1) % CHAR_COLORS.length; keys['KeyD'] = false; }
+  if (keys['Space']) { charSelect[0].ready = !charSelect[0].ready; keys['Space'] = false; }
+
+  // P2: Arrows to change character/color, Enter to ready
+  if (keys['ArrowUp'] && !charSelect[1].ready) { charSelect[1].charType = (charSelect[1].charType + 2) % 3; keys['ArrowUp'] = false; }
+  if (keys['ArrowDown'] && !charSelect[1].ready) { charSelect[1].charType = (charSelect[1].charType + 1) % 3; keys['ArrowDown'] = false; }
+  if (keys['ArrowLeft'] && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['ArrowLeft'] = false; }
+  if (keys['ArrowRight'] && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + 1) % CHAR_COLORS.length; keys['ArrowRight'] = false; }
+  if (keys['Enter']) { charSelect[1].ready = !charSelect[1].ready; keys['Enter'] = false; }
+
+  // Both ready — start game
+  if (charSelect[0].ready && charSelect[1].ready) {
+    gameState = STATE.GENERATING;
+  }
+}
+
+// ─── Droppings (Ant special ability) ─────────────────────────
+function updateDroppings(dt) {
+  for (let i = droppings.length - 1; i >= 0; i--) {
+    const d = droppings[i];
+    d.lifetime -= dt;
+    if (d.lifetime <= 0) { droppings.splice(i, 1); continue; }
+
+    // Check if enemy queen steps on it
+    for (const q of queens) {
+      if (q.colony !== d.owner && q.invTimer <= 0) {
+        if (Math.round(q.x) === d.x && Math.round(q.y) === d.y) {
+          q.hp--;
+          q.invTimer = 0.5;
+          spawnParticles(d.x, d.y, '#5A3A20', 10);
+          playHit();
+          droppings.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+}

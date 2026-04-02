@@ -25,7 +25,11 @@ const COLORS = {
 const T = { DIRT: 0, ROCK: 1, PUDDLE: 2, LEAF: 3, DUG: 4, TUNNEL: 5 };
 
 // Game states
-const STATE = { NARRATIVE: -1, TITLE: 0, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4, MATCH_END: 5, PAUSED: 6 };
+const STATE = { NARRATIVE: -1, TITLE: 0, CHAR_SELECT: 7, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4, MATCH_END: 5, PAUSED: 6 };
+
+// Character types
+const CHAR_TYPES = ['ANT', 'BEETLE', 'COCKROACH'];
+const CHAR_COLORS = ['#3066C8', '#C83030', '#30A830', '#C8A030', '#A030C8', '#30C8C8', '#C86030', '#FFFFFF'];
 
 // Power-up types
 const POWER_TYPES = ['SUGAR', 'RAPID', 'SHIELD', 'MEGA'];

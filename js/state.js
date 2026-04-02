@@ -109,6 +109,13 @@ let worms = [];
 let tileSeed = [];
 let screenShake = 0;
 let dustMotes = [];
+let droppings = [];
+
+// Character selection state
+let charSelect = [
+  { charType: 0, colorIdx: 0, ready: false }, // P1
+  { charType: 0, colorIdx: 1, ready: false }, // P2
+];
 
 // Pre-render vignette overlay
 const vignetteCanvas = document.createElement('canvas');
