@@ -31,6 +31,21 @@ const STATE = { NARRATIVE: -1, TITLE: 0, CHAR_SELECT: 7, GENERATING: 1, COUNTDOW
 const CHAR_TYPES = ['ANT', 'BEETLE', 'COCKROACH'];
 const CHAR_COLORS = ['#3066C8', '#C83030', '#30A830', '#C8A030', '#A030C8', '#30C8C8', '#C86030', '#FFFFFF'];
 
+// ─── Seeded PRNG (mulberry32) for deterministic gameplay ─────
+let gameSeed = Date.now();
+function seedRandom(seed) {
+  gameSeed = seed;
+}
+function seededRandom() {
+  gameSeed |= 0;
+  gameSeed = gameSeed + 0x6D2B79F5 | 0;
+  let t = Math.imul(gameSeed ^ gameSeed >>> 15, 1 | gameSeed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+// Drop-in replacement for Math.random() in gameplay code
+function gameRandom() { return seededRandom(); }
+
 // Player controls (P1-P4)
 const PLAYER_CONTROLS = [
   { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ' },

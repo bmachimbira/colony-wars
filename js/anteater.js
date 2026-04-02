@@ -8,7 +8,7 @@ let anteaterWarning = 0;
 
 function spawnAnteater() {
   // Enter from a random edge
-  const edge = Math.floor(Math.random() * 4);
+  const edge = Math.floor(gameRandom() * 4);
   let x, y, dir;
   switch (edge) {
     case 0: x = 0; y = Math.floor(ROWS / 2); dir = 'right'; break;

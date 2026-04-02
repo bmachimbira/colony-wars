@@ -24,13 +24,13 @@ function generateMap() {
   while (rockCount < targetRocks) {
     let rx, ry;
     do {
-      rx = 2 + Math.floor(Math.random() * (COLS - 4));
-      ry = 2 + Math.floor(Math.random() * (ROWS - 4));
+      rx = 2 + Math.floor(gameRandom() * (COLS - 4));
+      ry = 2 + Math.floor(gameRandom() * (ROWS - 4));
     } while (nearAnyChamber(rx, ry));
-    const size = 5 + Math.floor(Math.random() * 8);
+    const size = 5 + Math.floor(gameRandom() * 8);
     for (let i = 0; i < size && rockCount < targetRocks; i++) {
-      const ox = rx + Math.floor(Math.random() * 4) - 1;
-      const oy = ry + Math.floor(Math.random() * 4) - 1;
+      const ox = rx + Math.floor(gameRandom() * 4) - 1;
+      const oy = ry + Math.floor(gameRandom() * 4) - 1;
       if (ox >= 0 && ox < COLS && oy >= 0 && oy < ROWS && map[oy][ox] !== T.ROCK) {
         if (!nearAnyChamber(ox, oy)) {
           map[oy][ox] = T.ROCK;
@@ -53,21 +53,21 @@ function generateMap() {
   }
 
   // Water puddles (8-14, placed in clusters of 2-4)
-  const numPuddleClusters = 4 + Math.floor(Math.random() * 4);
+  const numPuddleClusters = 4 + Math.floor(gameRandom() * 4);
   for (let c = 0; c < numPuddleClusters; c++) {
     let px, py, attempts = 0;
     do {
-      px = 1 + Math.floor(Math.random() * (COLS - 2));
-      py = 1 + Math.floor(Math.random() * (ROWS - 2));
+      px = 1 + Math.floor(gameRandom() * (COLS - 2));
+      py = 1 + Math.floor(gameRandom() * (ROWS - 2));
       attempts++;
     } while (attempts < 100 && (map[py][px] !== T.DIRT || nearAnyChamber(px, py)));
     if (attempts < 100) {
       map[py][px] = T.PUDDLE;
       // Expand puddle cluster
-      const clusterSize = 1 + Math.floor(Math.random() * 3);
+      const clusterSize = 1 + Math.floor(gameRandom() * 3);
       for (let i = 0; i < clusterSize; i++) {
-        const wx = px + Math.floor(Math.random() * 3) - 1;
-        const wy = py + Math.floor(Math.random() * 3) - 1;
+        const wx = px + Math.floor(gameRandom() * 3) - 1;
+        const wy = py + Math.floor(gameRandom() * 3) - 1;
         if (wx >= 0 && wx < COLS && wy >= 0 && wy < ROWS && map[wy][wx] === T.DIRT) {
           if (!nearAnyChamber(wx, wy)) {
             map[wy][wx] = T.PUDDLE;
@@ -78,12 +78,12 @@ function generateMap() {
   }
 
   // Leaf litter (3-5)
-  const numLeaves = 3 + Math.floor(Math.random() * 3);
+  const numLeaves = 3 + Math.floor(gameRandom() * 3);
   for (let i = 0; i < numLeaves; i++) {
     let lx, ly;
     do {
-      lx = Math.floor(Math.random() * COLS);
-      ly = Math.floor(Math.random() * ROWS);
+      lx = Math.floor(gameRandom() * COLS);
+      ly = Math.floor(gameRandom() * ROWS);
     } while (map[ly][lx] !== T.DUG);
     map[ly][lx] = T.LEAF;
   }
@@ -143,9 +143,9 @@ function carveTunnel(x1, y1, x2, y2, bias) {
   const midX = Math.floor((x1 + x2) / 2);
   let midY;
   if (bias === 'upper') {
-    midY = Math.max(1, Math.floor(Math.min(y1, y2) * 0.3) + Math.floor(Math.random() * 3));
+    midY = Math.max(1, Math.floor(Math.min(y1, y2) * 0.3) + Math.floor(gameRandom() * 3));
   } else if (bias === 'lower') {
-    midY = Math.min(ROWS - 2, Math.floor(Math.max(y1, y2) + (ROWS - Math.max(y1, y2)) * 0.7) + Math.floor(Math.random() * 3));
+    midY = Math.min(ROWS - 2, Math.floor(Math.max(y1, y2) + (ROWS - Math.max(y1, y2)) * 0.7) + Math.floor(gameRandom() * 3));
   } else {
     midY = Math.floor((y1 + y2) / 2);
   }
@@ -160,11 +160,11 @@ function carveSegment(x1, y1, x2, y2) {
   while (x !== x2 || y !== y2) {
     // Force through rocks to guarantee connectivity
     if (map[y][x] === T.DIRT || map[y][x] === T.ROCK) map[y][x] = T.DUG;
-    if (Math.random() < 0.5) {
-      if (y-1 >= 0 && (map[y-1][x] === T.DIRT) && Math.random() < 0.3) map[y-1][x] = T.DUG;
-      if (y+1 < ROWS && (map[y+1][x] === T.DIRT) && Math.random() < 0.3) map[y+1][x] = T.DUG;
+    if (gameRandom() < 0.5) {
+      if (y-1 >= 0 && (map[y-1][x] === T.DIRT) && gameRandom() < 0.3) map[y-1][x] = T.DUG;
+      if (y+1 < ROWS && (map[y+1][x] === T.DIRT) && gameRandom() < 0.3) map[y+1][x] = T.DUG;
     }
-    if (x !== x2 && (y === y2 || Math.random() < 0.5)) {
+    if (x !== x2 && (y === y2 || gameRandom() < 0.5)) {
       x += x < x2 ? 1 : -1;
     } else if (y !== y2) {
       y += y < y2 ? 1 : -1;

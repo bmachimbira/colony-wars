@@ -175,20 +175,33 @@ function startNewRound() {
   waveTimer = 30;
   waveCount = 0;
 
+  // Seed the PRNG — host picks seed, guests use the same one
+  if (!isOnline || isHost) {
+    const seed = Date.now() ^ (Math.random() * 0xFFFFFFFF);
+    seedRandom(seed);
+    // Broadcast seed to all guests
+    if (isOnline && isHost) {
+      for (const pc of peerConns) {
+        try { pc.conn.send({ type: 'seed', seed }); } catch (e) {}
+      }
+    }
+  }
+  // If guest, seed was already set via 'seed' message before GENERATING
+
   // Generate per-tile random seeds for visual variation
   tileSeed = [];
   for (let y = 0; y < ROWS; y++) {
     tileSeed[y] = [];
-    for (let x = 0; x < COLS; x++) tileSeed[y][x] = Math.random();
+    for (let x = 0; x < COLS; x++) tileSeed[y][x] = gameRandom();
   }
 
   // Spawn ambient dust motes
   dustMotes = [];
   for (let i = 0; i < 25; i++) {
     dustMotes.push({
-      x: Math.random() * W, y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 4 - 2,
-      size: 1 + Math.random() * 2, alpha: 0.05 + Math.random() * 0.1,
+      x: gameRandom() * W, y: gameRandom() * H,
+      vx: (gameRandom() - 0.5) * 8, vy: (gameRandom() - 0.5) * 4 - 2,
+      size: 1 + gameRandom() * 2, alpha: 0.05 + gameRandom() * 0.1,
     });
   }
 

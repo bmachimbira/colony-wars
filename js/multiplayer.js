@@ -275,8 +275,12 @@ function setupHostConnection(conn, slot, steps) {
         borderRadius: '4px', fontWeight: 'bold',
       });
       startBtn.addEventListener('click', () => {
-        // Broadcast game start to all guests
+        // Pre-seed so host and guests share the same seed
+        const seed = Date.now() ^ (Math.random() * 0xFFFFFFFF);
+        seedRandom(seed);
+        // Broadcast seed + start to all guests
         for (const pc of peerConns) {
+          try { pc.conn.send({ type: 'seed', seed }); } catch (e) {}
           try { pc.conn.send({ type: 'start', playerCount: onlinePlayerCount }); } catch (e) {}
         }
         closeMultiplayerMenu();
@@ -330,6 +334,8 @@ function setupGuestConnection(conn, steps) {
     } else if (data && data.type === 'relay') {
       // Another guest's input relayed through host
       remoteKeysBySlot[data.slot] = data.keys;
+    } else if (data && data.type === 'seed') {
+      seedRandom(data.seed);
     } else if (data && data.type === 'start') {
       playerCount = data.playerCount;
       closeMultiplayerMenu();

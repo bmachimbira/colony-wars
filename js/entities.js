@@ -57,12 +57,12 @@ function fireBullet(q) {
 function spawnParticles(x, y, color, count, type) {
   if (particles.length >= PARTICLE_CAP) return;
   for (let i = 0; i < count && particles.length < PARTICLE_CAP; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const spd = 30 + Math.random() * 60;
+    const angle = gameRandom() * Math.PI * 2;
+    const spd = 30 + gameRandom() * 60;
     particles.push({
       x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
       vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-      life: 0.3 + Math.random() * 0.4, color, size: 2 + Math.random() * 3,
+      life: 0.3 + gameRandom() * 0.4, color, size: 2 + gameRandom() * 3,
       type: type || 'default',
     });
   }
@@ -72,8 +72,8 @@ function spawnTrailParticle(px, py, color) {
   if (particles.length >= PARTICLE_CAP) return;
   particles.push({
     x: px, y: py,
-    vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
-    life: 0.15 + Math.random() * 0.1, color, size: 1.5 + Math.random(),
+    vx: (gameRandom() - 0.5) * 10, vy: (gameRandom() - 0.5) * 10,
+    life: 0.15 + gameRandom() * 0.1, color, size: 1.5 + gameRandom(),
     type: 'trail',
   });
 }
@@ -174,7 +174,7 @@ function updateQueen(q, dt) {
         }
       }
       if (candidates.length > 0) {
-        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        const target = candidates[Math.floor(gameRandom() * candidates.length)];
         q.flyTargetX = target.x;
         q.flyTargetY = target.y;
         q.flyTimer = 0.3;
@@ -222,7 +222,7 @@ function updateBullets(dt) {
     b.y += b.dy * b.speed * dt;
 
     // Spawn trail particle
-    if (Math.random() < 0.4) {
+    if (gameRandom() < 0.4) {
       spawnTrailParticle(b.x * TILE, b.y * TILE, b.blast >= 3 ? '#FFAA44' : '#88FF44');
     }
 
@@ -421,8 +421,8 @@ function updateMound(dt) {
   if (moundTimer <= 0 && roundTimer > 5 && mounds.length < 3) {
     let mx, my, attempts = 0;
     do {
-      mx = Math.floor(Math.random() * COLS);
-      my = Math.floor(Math.random() * ROWS);
+      mx = Math.floor(gameRandom() * COLS);
+      my = Math.floor(gameRandom() * ROWS);
       attempts++;
     } while (attempts < 100 && (map[my][mx] !== T.DUG ||
       (Math.abs(mx - queens[0].x) + Math.abs(my - queens[0].y) < 5) ||
@@ -435,7 +435,7 @@ function updateMound(dt) {
       mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
       playMoundAppear();
     }
-    moundTimer = 1 + Math.random() * 1;
+    moundTimer = 1 + gameRandom() * 1;
   }
 }
 
@@ -455,8 +455,8 @@ function updatePowerUp(dt) {
   if (powerUpTimer <= 0 && roundTimer > 3 && powerUps.length < 3) {
     let px, py, attempts = 0;
     do {
-      px = Math.floor(Math.random() * COLS);
-      py = Math.floor(Math.random() * ROWS);
+      px = Math.floor(gameRandom() * COLS);
+      py = Math.floor(gameRandom() * ROWS);
       attempts++;
     } while (attempts < 100 && (map[py][px] !== T.DUG ||
       powerUps.some(p => Math.abs(px - p.x) + Math.abs(py - p.y) < 6) ||
@@ -465,7 +465,7 @@ function updatePowerUp(dt) {
     if (attempts < 100) {
       powerUps.push({
         x: px, y: py,
-        type: POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)],
+        type: POWER_TYPES[Math.floor(gameRandom() * POWER_TYPES.length)],
         despawnTimer: 15,
       });
       playPowerUpAppear();
@@ -486,19 +486,19 @@ function applyPowerUp(q, pu) {
 
 // ─── Worms (hidden in dirt, give extra life when eaten) ──────
 function spawnWorms() {
-  const count = 3 + Math.floor(Math.random() * 4); // 3-6 worms
+  const count = 3 + Math.floor(gameRandom() * 4); // 3-6 worms
   for (let i = 0; i < count; i++) {
     let wx, wy, attempts = 0;
     do {
-      wx = Math.floor(Math.random() * COLS);
-      wy = Math.floor(Math.random() * ROWS);
+      wx = Math.floor(gameRandom() * COLS);
+      wy = Math.floor(gameRandom() * ROWS);
       attempts++;
     } while (attempts < 100 && map[wy][wx] !== T.DIRT);
     if (attempts < 100) {
       worms.push({
         x: wx, y: wy,
-        wigglePhase: Math.random() * Math.PI * 2,
-        segments: 4 + Math.floor(Math.random() * 3),
+        wigglePhase: gameRandom() * Math.PI * 2,
+        segments: 4 + Math.floor(gameRandom() * 3),
       });
     }
   }
