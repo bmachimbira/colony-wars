@@ -283,3 +283,150 @@ function playMatchWin() {
     osc.stop(start + 0.3);
   });
 }
+
+// ─── Background Music (procedural, looping) ──────────────────
+const musicGain = audioCtx.createGain();
+musicGain.gain.value = 0;
+musicGain.connect(audioCtx.destination);
+
+let musicPlaying = false;
+let musicNodes = [];
+
+function startMusic() {
+  if (musicPlaying) return;
+  musicPlaying = true;
+  musicGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  musicGain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 2);
+
+  // ── Bass drone: two detuned saws through a lowpass ──
+  const bass1 = audioCtx.createOscillator();
+  const bass2 = audioCtx.createOscillator();
+  const bassGain = audioCtx.createGain();
+  const bassFilter = audioCtx.createBiquadFilter();
+  bass1.type = 'sawtooth';
+  bass2.type = 'sawtooth';
+  bass1.frequency.value = 55; // A1
+  bass2.frequency.value = 55.3; // slightly detuned
+  bassGain.gain.value = 0.35;
+  bassFilter.type = 'lowpass';
+  bassFilter.frequency.value = 200;
+  bassFilter.Q.value = 2;
+  bass1.connect(bassFilter);
+  bass2.connect(bassFilter);
+  bassFilter.connect(bassGain);
+  bassGain.connect(musicGain);
+  bass1.start();
+  bass2.start();
+  musicNodes.push(bass1, bass2);
+
+  // ── Rhythmic pulse: filtered square wave with LFO on gain ──
+  const pulse = audioCtx.createOscillator();
+  const pulseGain = audioCtx.createGain();
+  const pulseLFO = audioCtx.createOscillator();
+  const pulseLFOGain = audioCtx.createGain();
+  const pulseFilter = audioCtx.createBiquadFilter();
+  pulse.type = 'square';
+  pulse.frequency.value = 110; // A2
+  pulseFilter.type = 'bandpass';
+  pulseFilter.frequency.value = 300;
+  pulseFilter.Q.value = 3;
+  pulseLFO.type = 'sine';
+  pulseLFO.frequency.value = 2; // 2 Hz throb
+  pulseLFOGain.gain.value = 0.12;
+  pulseGain.gain.value = 0.08;
+  pulseLFO.connect(pulseLFOGain);
+  pulseLFOGain.connect(pulseGain.gain);
+  pulse.connect(pulseFilter);
+  pulseFilter.connect(pulseGain);
+  pulseGain.connect(musicGain);
+  pulse.start();
+  pulseLFO.start();
+  musicNodes.push(pulse, pulseLFO);
+
+  // ── Ambient pad: soft chord with slow filter sweep ──
+  const padNotes = [82.4, 110, 164.8]; // E2, A2, E3 (open fifth)
+  const padGain = audioCtx.createGain();
+  const padFilter = audioCtx.createBiquadFilter();
+  padGain.gain.value = 0.06;
+  padFilter.type = 'lowpass';
+  padFilter.frequency.value = 400;
+  padFilter.Q.value = 1;
+  // Slow sweep on filter
+  const padLFO = audioCtx.createOscillator();
+  const padLFOGain = audioCtx.createGain();
+  padLFO.type = 'sine';
+  padLFO.frequency.value = 0.08; // very slow
+  padLFOGain.gain.value = 300;
+  padLFO.connect(padLFOGain);
+  padLFOGain.connect(padFilter.frequency);
+  padLFO.start();
+  musicNodes.push(padLFO);
+
+  for (const freq of padNotes) {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    osc.connect(padFilter);
+    osc.start();
+    musicNodes.push(osc);
+  }
+  padFilter.connect(padGain);
+  padGain.connect(musicGain);
+
+  // ── Melody: sequenced notes on a timer ──
+  scheduleMelody();
+}
+
+// Pentatonic minor scale notes for an eerie underground feel
+const melodyNotes = [165, 196, 220, 262, 294, 330, 392, 440];
+let melodyInterval = null;
+
+function scheduleMelody() {
+  let stepIndex = 0;
+  melodyInterval = setInterval(() => {
+    if (!musicPlaying) { clearInterval(melodyInterval); return; }
+    const t = audioCtx.currentTime;
+
+    // Play a note every ~0.8s, sometimes skip for rhythm
+    if (Math.random() < 0.3) return;
+
+    const note = melodyNotes[stepIndex % melodyNotes.length];
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    osc.type = Math.random() < 0.5 ? 'triangle' : 'sine';
+    osc.frequency.value = note;
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, t);
+    filter.frequency.exponentialRampToValueAtTime(200, t + 0.6);
+    gain.gain.setValueAtTime(0.07, t);
+    gain.gain.setValueAtTime(0.07, t + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(musicGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+
+    stepIndex++;
+  }, 800);
+}
+
+function stopMusic() {
+  if (!musicPlaying) return;
+  musicPlaying = false;
+  musicGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
+
+  // Stop all persistent nodes after fade
+  setTimeout(() => {
+    for (const node of musicNodes) {
+      try { node.stop(); } catch (e) {}
+    }
+    musicNodes = [];
+  }, 1200);
+
+  if (melodyInterval) {
+    clearInterval(melodyInterval);
+    melodyInterval = null;
+  }
+}

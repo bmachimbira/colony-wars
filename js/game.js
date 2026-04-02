@@ -29,6 +29,7 @@ function update(dt) {
     if (roundEndTimer <= 0) {
       if (scores[0] >= 3 || scores[1] >= 3) {
         gameState = STATE.MATCH_END;
+        stopMusic();
         playMatchWin();
       } else {
         gameState = STATE.GENERATING;
@@ -120,6 +121,8 @@ function startNewRound() {
       up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter'
     }),
   ];
+
+  startMusic();
 
   // Spawn decorative worms in tunnels
   spawnWorms();
