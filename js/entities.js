@@ -3,7 +3,7 @@ function createQueen(x, y, colony, controls) {
   return {
     x, y, dir: 'right', hp: 3, speed: 3, colony,
     controls, canShoot: true, shootCooldown: 0,
-    bobPhase: 0, moving: false, invTimer: 0,
+    bobPhase: 0, moving: false, invTimer: 0, walkSoundTimer: 0,
     activePowerUp: null, powerUpTimer: 0, megaShots: 0,
   };
 }
@@ -22,6 +22,7 @@ function fireBullet(q) {
   const t = map[by][bx];
   if (t === T.ROCK || t === T.PUDDLE) return;
 
+  playShoot();
   const speed = 5;
   const blast = q.activePowerUp === 'MEGA' ? 3 : 1;
 
@@ -68,7 +69,16 @@ function updateQueen(q, dt) {
   if (keys[c.right]) { mx = 1; q.dir = 'right'; }
 
   q.moving = mx !== 0 || my !== 0;
-  if (q.moving) q.bobPhase += dt * 10;
+  if (q.moving) {
+    q.bobPhase += dt * 10;
+    q.walkSoundTimer -= dt;
+    if (q.walkSoundTimer <= 0) {
+      playWalk();
+      q.walkSoundTimer = 0.15;
+    }
+  } else {
+    q.walkSoundTimer = 0;
+  }
 
   const speed = q.activePowerUp === 'SUGAR' ? q.speed * 2 : q.speed;
 
@@ -114,6 +124,7 @@ function updateQueen(q, dt) {
       m.claimedBy = q.colony;
       m.soldiersRemaining = 3;
       m.spawnTimer = 0.5;
+      playMoundClaim();
     }
   }
 
@@ -121,6 +132,7 @@ function updateQueen(q, dt) {
   for (let pi = powerUps.length - 1; pi >= 0; pi--) {
     if (Math.round(q.x) === powerUps[pi].x && Math.round(q.y) === powerUps[pi].y) {
       applyPowerUp(q, powerUps[pi]);
+      playPowerUp();
       powerUps.splice(pi, 1);
     }
   }
@@ -162,6 +174,7 @@ function updateBullets(dt) {
         map[ty][tx] = T.DUG;
         spawnParticles(tx, ty, COLORS.dirtBord, 5);
       }
+      playDirtBreak();
       bullets.splice(i, 1);
       continue;
     }
@@ -176,6 +189,7 @@ function updateBullets(dt) {
             q.hp--;
             q.invTimer = 0.5;
           }
+          playHit();
           spawnParticles(Math.round(q.x), Math.round(q.y), q.colony === 'blue' ? COLORS.p1 : COLORS.p2, 8);
           bullets.splice(i, 1);
           break;
@@ -302,6 +316,7 @@ function updateMound(dt) {
           colony: m.claimedBy, lifetime: 100, pathTimer: 0,
           nextTile: null, shootCooldown: 1,
         });
+        playSoldierSpawn();
         m.soldiersRemaining--;
         m.spawnTimer = 2.5;
       }
@@ -327,6 +342,7 @@ function updateMound(dt) {
 
     if (attempts < 100) {
       mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
+      playMoundAppear();
     }
     moundTimer = 1 + Math.random() * 1;
   }
@@ -361,6 +377,7 @@ function updatePowerUp(dt) {
         type: POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)],
         despawnTimer: 15,
       });
+      playPowerUpAppear();
     }
     powerUpTimer = 1;
   }
@@ -373,5 +390,44 @@ function applyPowerUp(q, pu) {
     case 'RAPID': q.powerUpTimer = 80; break;
     case 'SHIELD': break; // lasts until hit
     case 'MEGA': q.megaShots = 30; break;
+  }
+}
+
+// ─── Worms (hidden in dirt, give extra life when eaten) ──────
+function spawnWorms() {
+  const count = 3 + Math.floor(Math.random() * 4); // 3-6 worms
+  for (let i = 0; i < count; i++) {
+    let wx, wy, attempts = 0;
+    do {
+      wx = Math.floor(Math.random() * COLS);
+      wy = Math.floor(Math.random() * ROWS);
+      attempts++;
+    } while (attempts < 100 && map[wy][wx] !== T.DIRT);
+    if (attempts < 100) {
+      worms.push({
+        x: wx, y: wy,
+        wigglePhase: Math.random() * Math.PI * 2,
+        segments: 4 + Math.floor(Math.random() * 3),
+      });
+    }
+  }
+}
+
+function updateWorms(dt) {
+  for (const w of worms) {
+    w.wigglePhase += dt * 5;
+  }
+
+  // Check if any queen is on a worm's tile (tile must be dug out first)
+  for (const q of queens) {
+    const qx = Math.round(q.x), qy = Math.round(q.y);
+    for (let i = worms.length - 1; i >= 0; i--) {
+      const w = worms[i];
+      if (w.x === qx && w.y === qy && canWalk(qx, qy)) {
+        q.hp++;
+        spawnParticles(w.x, w.y, '#D4856A', 8);
+        worms.splice(i, 1);
+      }
+    }
   }
 }

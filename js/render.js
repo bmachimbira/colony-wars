@@ -69,8 +69,47 @@ function draw() {
         ctx.fill();
         ctx.globalAlpha = 1;
       } else if (t === T.DUG || t === T.TUNNEL) {
-        ctx.fillStyle = COLORS.dug;
+        ctx.fillStyle = COLORS.dirt;
         ctx.fillRect(px, py, TILE, TILE);
+        // Draw rounded tunnel shape
+        const r = TILE * 0.35;
+        const isOpen = (dx, dy) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return false;
+          const nt = map[ny][nx];
+          return nt === T.DUG || nt === T.TUNNEL || nt === T.LEAF;
+        };
+        const up = isOpen(0, -1), down = isOpen(0, 1), left = isOpen(-1, 0), right = isOpen(1, 0);
+        const tl = isOpen(-1, -1), tr = isOpen(1, -1), bl = isOpen(-1, 1), br = isOpen(1, 1);
+        ctx.fillStyle = COLORS.dug;
+        ctx.beginPath();
+        // Top-left corner
+        if (up && left && tl) { ctx.moveTo(px, py); }
+        else if (up && left) { ctx.moveTo(px, py); }
+        else if (up) { ctx.moveTo(px + r, py); ctx.quadraticCurveTo(px, py, px, py + r); ctx.lineTo(px, py); ctx.moveTo(px + r, py); }
+        else if (left) { ctx.moveTo(px, py + r); ctx.quadraticCurveTo(px, py, px + r, py); ctx.lineTo(px, py); ctx.moveTo(px, py + r); }
+        else { ctx.moveTo(px + r, py); }
+        // Draw as rounded rect with selective corners
+        const rtl = (up || left) ? (up && left ? 0 : r * 0.5) : r;
+        const rtr = (up || right) ? (up && right ? 0 : r * 0.5) : r;
+        const rbr = (down || right) ? (down && right ? 0 : r * 0.5) : r;
+        const rbl = (down || left) ? (down && left ? 0 : r * 0.5) : r;
+        ctx.beginPath();
+        ctx.moveTo(px + rtl, py);
+        ctx.lineTo(px + TILE - rtr, py);
+        if (rtr > 0) ctx.quadraticCurveTo(px + TILE, py, px + TILE, py + rtr);
+        else ctx.lineTo(px + TILE, py);
+        ctx.lineTo(px + TILE, py + TILE - rbr);
+        if (rbr > 0) ctx.quadraticCurveTo(px + TILE, py + TILE, px + TILE - rbr, py + TILE);
+        else ctx.lineTo(px + TILE, py + TILE);
+        ctx.lineTo(px + rbl, py + TILE);
+        if (rbl > 0) ctx.quadraticCurveTo(px, py + TILE, px, py + TILE - rbl);
+        else ctx.lineTo(px, py + TILE);
+        ctx.lineTo(px, py + rtl);
+        if (rtl > 0) ctx.quadraticCurveTo(px, py, px + rtl, py);
+        else ctx.lineTo(px, py);
+        ctx.closePath();
+        ctx.fill();
       }
     }
   }
@@ -115,6 +154,17 @@ function draw() {
     ctx.fillText(label, px + TILE / 2, py + TILE / 2 + 3);
   }
 
+  // Draw worms (only visible once dirt is dug away)
+  for (const w of worms) {
+    const tile = map[w.y][w.x];
+    if (tile === T.DUG || tile === T.TUNNEL) {
+      drawWorm(w, 1);
+    } else if (tile === T.DIRT) {
+      // Subtle hint — small wiggle poking out of the dirt
+      drawWorm(w, 0.25);
+    }
+  }
+
   // Draw soldiers
   for (const s of soldiers) {
     drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
@@ -129,7 +179,7 @@ function draw() {
     ctx.save();
     ctx.shadowColor = col;
     ctx.shadowBlur = 12;
-    drawAnt(q.x, q.y, q.dir, col, 1, 1, true, q.bobPhase, q.hp);
+    drawAnt(q.x, q.y, q.dir, col, 1, 1, true, q.moving ? q.bobPhase : 0, q.hp);
     ctx.restore();
 
     // Shield indicator
@@ -369,6 +419,57 @@ function drawAnt(x, y, dir, color, scale, alpha, isQueen, bobPhase, hp) {
   ctx.restore();
 }
 
+function drawWorm(w, alpha) {
+  const px = w.x * TILE + TILE / 2;
+  const py = w.y * TILE + TILE / 2;
+  const segLen = TILE * 0.18;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(px, py);
+
+  // Draw segmented body trailing behind head
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < w.segments; i++) {
+    const t = i / w.segments;
+    const wiggle = Math.sin(w.wigglePhase + i * 1.2) * TILE * 0.12;
+    const sx = -i * segLen;
+    const sy = wiggle;
+    const size = TILE * (0.14 - t * 0.04);
+
+    // Body segment
+    ctx.fillStyle = i === 0 ? '#D4856A' : '#C47A62';
+    ctx.beginPath();
+    ctx.arc(sx, sy, size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Segment ring
+    if (i > 0) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Head highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(TILE * 0.04, -TILE * 0.03, TILE * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tiny eyes
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(TILE * 0.08, -TILE * 0.05, 1.5, 0, Math.PI * 2);
+  ctx.arc(TILE * 0.08, TILE * 0.05, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function drawHUD() {
   // P1 HP
   ctx.font = 'bold 14px monospace';
@@ -434,6 +535,11 @@ function drawTitle() {
   ctx.fillStyle = COLORS.p2;
   ctx.textAlign = 'right';
   ctx.fillText('P2: ARROWS + ENTER', W / 2 + 150, H / 2 + 110);
+
+  ctx.fillStyle = '#666';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 135);
 }
 
 function drawMatchEnd() {

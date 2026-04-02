@@ -28,3 +28,4 @@ let moundTimer = 0;
 let powerUpTimer = 0;
 let waveTimer = 0;
 let waveCount = 0;
+let worms = [];

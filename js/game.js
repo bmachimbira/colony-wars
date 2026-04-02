@@ -13,8 +13,14 @@ function update(dt) {
   }
 
   if (gameState === STATE.COUNTDOWN) {
+    const prevSec = Math.ceil(countdownTimer);
     countdownTimer -= dt;
-    if (countdownTimer <= 0) gameState = STATE.PLAYING;
+    const curSec = Math.ceil(countdownTimer);
+    if (curSec !== prevSec && curSec > 0) playCountdownTick();
+    if (countdownTimer <= 0) {
+      gameState = STATE.PLAYING;
+      playRoundStart();
+    }
     return;
   }
 
@@ -23,6 +29,8 @@ function update(dt) {
     if (roundEndTimer <= 0) {
       if (scores[0] >= 3 || scores[1] >= 3) {
         gameState = STATE.MATCH_END;
+        stopMusic();
+        playMatchWin();
       } else {
         gameState = STATE.GENERATING;
       }
@@ -65,6 +73,9 @@ function update(dt) {
   // Update soldiers
   updateSoldiers(dt);
 
+  // Update worms
+  updateWorms(dt);
+
   // Spawn mound logic
   updateMound(dt);
 
@@ -77,6 +88,7 @@ function update(dt) {
       roundWinner = 1 - i;
       scores[roundWinner]++;
       spawnParticles(queens[i].x, queens[i].y, queens[i].colony === 'blue' ? COLORS.p1 : COLORS.p2, 30);
+      playDeath();
       gameState = STATE.ROUND_END;
       roundEndTimer = 3;
       return;
@@ -90,6 +102,7 @@ function startNewRound() {
   bullets = [];
   particles = [];
   soldiers = [];
+  worms = [];
   mounds = [];
   powerUps = [];
   roundTimer = 0;
@@ -109,6 +122,11 @@ function startNewRound() {
     }),
   ];
 
+  startMusic();
+
+  // Spawn decorative worms in tunnels
+  spawnWorms();
+
   countdownTimer = 3;
   gameState = STATE.COUNTDOWN;
 }
@@ -119,6 +137,7 @@ function gameLoop(time) {
   try {
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
+    pollGamepads();
     update(dt);
     draw();
   } catch (e) {
