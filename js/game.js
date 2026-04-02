@@ -49,6 +49,20 @@ function update(dt) {
     return;
   }
 
+  if (gameState === STATE.PAUSED) {
+    if (keys['Escape']) {
+      keys['Escape'] = false;
+      gameState = STATE.PLAYING;
+    }
+    return;
+  }
+
+  if (gameState === STATE.PLAYING && keys['Escape']) {
+    keys['Escape'] = false;
+    gameState = STATE.PAUSED;
+    return;
+  }
+
   if (gameState !== STATE.PLAYING) return;
 
   roundTimer += dt;
