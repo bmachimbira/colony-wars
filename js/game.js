@@ -532,7 +532,7 @@ function updateNarrative(dt) {
   // Typewriter effect
   if (!narrativePageReady) {
     narrativeCharTimer += dt;
-    const charsPerSec = 40;
+    const charsPerSec = 70;
     narrativeCharIndex = Math.min(Math.floor(narrativeCharTimer * charsPerSec), fullText.length);
     if (narrativeCharIndex >= fullText.length) {
       narrativePageReady = true;
