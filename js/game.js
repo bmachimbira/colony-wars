@@ -240,7 +240,14 @@ function updateNarrative(dt) {
   if (anyKey && narrativeKeyReleased) {
     narrativeKeyReleased = false;
 
-    if (!narrativePageReady) {
+    // Left arrow goes back a page
+    if (keys['ArrowLeft'] && narrativePage > 0) {
+      keys['ArrowLeft'] = false;
+      narrativePage--;
+      narrativeCharIndex = 0;
+      narrativeCharTimer = 0;
+      narrativePageReady = false;
+    } else if (!narrativePageReady) {
       // Skip typewriter — show full page immediately
       narrativeCharIndex = fullText.length;
       narrativePageReady = true;
