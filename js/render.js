@@ -1428,18 +1428,21 @@ function drawTitle() {
   ctx.fillStyle = COLORS.moundGold;
   ctx.font = 'bold 48px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('COLONY CLASH', W / 2, H / 2 - 40);
+  ctx.fillText('COLONY CLASH', W / 2, H / 2 - 55);
 
   // Title glow
   ctx.save();
   ctx.shadowColor = COLORS.moundGold;
   ctx.shadowBlur = 20;
-  ctx.fillText('COLONY CLASH', W / 2, H / 2 - 40);
+  ctx.fillText('COLONY CLASH', W / 2, H / 2 - 55);
   ctx.restore();
 
-  ctx.fillStyle = '#999';
-  ctx.font = '16px monospace';
-  ctx.fillText('Queen vs. Queen \u2014 An Ant Colony Battle Arena', W / 2, H / 2 + 10);
+  ctx.fillStyle = '#BBB';
+  ctx.font = '18px monospace';
+  ctx.fillText('An Underground Colony Battle', W / 2, H / 2 - 10);
+  ctx.fillStyle = '#888';
+  ctx.font = '14px monospace';
+  ctx.fillText('The colony sent its best warrior', W / 2, H / 2 + 15);
 
   const blink = Math.sin(now / 500) > 0;
   if (blink) {
