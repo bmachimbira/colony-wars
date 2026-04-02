@@ -1,26 +1,26 @@
-// ─── P2P Multiplayer (WebRTC DataChannel) ────────────────────
-// True peer-to-peer: no server required. Players exchange
-// connection codes via copy-paste to establish a direct link.
-//
-// Architecture: lockstep input sync
-//   - Each frame, local player sends their input state
-//   - Remote input is applied to the other queen
-//   - Both machines run the same simulation
+// ─── P2P Multiplayer (PeerJS + WebRTC) ───────────────────────
+// 4-character room codes. PeerJS handles signaling,
+// actual game data flows peer-to-peer via WebRTC DataChannel.
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-];
-
-let peerConnection = null;
-let dataChannel = null;
+let peer = null;
+let peerConn = null;
 let isHost = false;
 let isOnline = false;
 let remoteKeys = {};
 let multiplayerUI = null;
-let connectionState = 'disconnected'; // disconnected, waiting, connecting, connected
+let connectionState = 'disconnected';
+let roomCode = '';
 
-// ─── UI Overlay (safe DOM construction) ──────────────────────
+const PEER_PREFIX = 'colonyclash-';
+
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// ─── UI ──────────────────────────────────────────────────────
 function showMultiplayerMenu() {
   if (multiplayerUI) return;
 
@@ -35,10 +35,9 @@ function showMultiplayerMenu() {
   const panel = document.createElement('div');
   Object.assign(panel.style, {
     background: '#1A1208', border: '2px solid #5C4023', borderRadius: '8px',
-    padding: '30px', maxWidth: '500px', width: '90%', textAlign: 'center',
+    padding: '30px', maxWidth: '420px', width: '90%', textAlign: 'center',
   });
 
-  // Helper functions
   function makeBtn(text, color, onClick) {
     const btn = document.createElement('button');
     btn.textContent = text;
@@ -51,20 +50,6 @@ function showMultiplayerMenu() {
     btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.2)'; });
     btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
     return btn;
-  }
-
-  function makeTextarea(id, placeholder, readOnly) {
-    const ta = document.createElement('textarea');
-    ta.id = id;
-    if (placeholder) ta.placeholder = placeholder;
-    if (readOnly) ta.readOnly = true;
-    Object.assign(ta.style, {
-      width: '100%', height: '80px', background: '#0E0A05', color: '#88FF44',
-      border: '1px solid #5C4023', fontFamily: 'monospace', fontSize: '11px',
-      padding: '8px', resize: 'none', borderRadius: '4px', margin: '8px 0',
-      display: 'block', boxSizing: 'border-box',
-    });
-    return ta;
   }
 
   function makeText(text, color, size) {
@@ -81,6 +66,32 @@ function showMultiplayerMenu() {
     return h;
   }
 
+  function makeCodeDisplay(id) {
+    const d = document.createElement('div');
+    d.id = id;
+    Object.assign(d.style, {
+      fontSize: '48px', fontFamily: 'monospace', fontWeight: 'bold', color: '#88FF44',
+      letterSpacing: '12px', margin: '20px 0', textShadow: '0 0 20px rgba(136,255,68,0.5)',
+    });
+    return d;
+  }
+
+  function makeCodeInput(id, placeholder) {
+    const input = document.createElement('input');
+    input.id = id;
+    input.placeholder = placeholder || 'XXXX';
+    input.maxLength = 4;
+    input.autocomplete = 'off';
+    Object.assign(input.style, {
+      width: '200px', textAlign: 'center', fontSize: '36px', fontFamily: 'monospace',
+      fontWeight: 'bold', letterSpacing: '10px', background: '#0E0A05', color: '#E8C840',
+      border: '2px solid #5C4023', padding: '10px', borderRadius: '6px', margin: '15px auto',
+      display: 'block', textTransform: 'uppercase',
+    });
+    input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+    return input;
+  }
+
   function makeStatus(id) {
     const s = document.createElement('div');
     s.id = id;
@@ -88,74 +99,54 @@ function showMultiplayerMenu() {
     return s;
   }
 
-  // Build steps as separate divs
+  // Steps
   const steps = {};
 
-  // ── Step: Menu ──
+  // ── Menu ──
   steps.menu = document.createElement('div');
   steps.menu.appendChild(makeHeading('ONLINE MULTIPLAYER'));
-  steps.menu.appendChild(makeText('Play with a friend on another machine.\nNo server needed \u2014 direct peer-to-peer connection.'));
-  steps.menu.appendChild(makeBtn('HOST GAME', '#3066C8', () => mpStartHost(steps)));
-  steps.menu.appendChild(makeBtn('JOIN GAME', '#3066C8', () => mpStartJoin(steps)));
+  steps.menu.appendChild(makeText('Play with a friend \u2014 no server needed'));
+  steps.menu.appendChild(makeBtn('HOST GAME', '#3066C8', () => mpHost(steps)));
+  steps.menu.appendChild(makeBtn('JOIN GAME', '#3066C8', () => mpShowStep(steps, 'join')));
   steps.menu.appendChild(document.createElement('br'));
   steps.menu.appendChild(makeBtn('BACK', '#C83030', closeMultiplayerMenu));
 
-  // ── Step: Host Offer ──
-  steps.hostOffer = document.createElement('div');
-  steps.hostOffer.style.display = 'none';
-  steps.hostOffer.appendChild(makeHeading('HOST \u2014 STEP 1 OF 2'));
-  steps.hostOffer.appendChild(makeText('Send this code to your friend:'));
-  steps.hostOffer.appendChild(makeTextarea('mp-offer-text', null, true));
-  steps.hostOffer.appendChild(makeBtn('COPY CODE', '#3066C8', mpCopyOffer));
-  steps.hostOffer.appendChild(makeText('Then paste their response code below:'));
-  steps.hostOffer.appendChild(makeTextarea('mp-answer-input', 'Paste your friend\'s response code here...'));
-  steps.hostOffer.appendChild(makeBtn('CONNECT', '#30A830', () => mpHostAcceptAnswer(steps)));
-  steps.hostOffer.appendChild(document.createElement('br'));
-  steps.hostOffer.appendChild(makeBtn('CANCEL', '#C83030', () => mpCancel(steps)));
-  steps.hostOffer.appendChild(makeStatus('mp-status'));
+  // ── Host ──
+  steps.host = document.createElement('div');
+  steps.host.style.display = 'none';
+  steps.host.appendChild(makeHeading('YOUR ROOM CODE'));
+  steps.host.appendChild(makeText('Share this code with your friend:'));
+  steps.host.appendChild(makeCodeDisplay('mp-room-code'));
+  steps.host.appendChild(makeText('Waiting for player to join...', '#E8C840'));
+  steps.host.appendChild(makeBtn('CANCEL', '#C83030', () => mpDisconnect(steps)));
+  steps.host.appendChild(makeStatus('mp-host-status'));
 
-  // ── Step: Join ──
+  // ── Join ──
   steps.join = document.createElement('div');
   steps.join.style.display = 'none';
-  steps.join.appendChild(makeHeading('JOIN \u2014 STEP 1 OF 2'));
-  steps.join.appendChild(makeText('Paste the host\'s code below:'));
-  steps.join.appendChild(makeTextarea('mp-join-offer-input', 'Paste the host\'s code here...'));
-  steps.join.appendChild(makeBtn('GENERATE RESPONSE', '#30A830', () => mpJoinCreateAnswer(steps)));
+  steps.join.appendChild(makeHeading('ENTER ROOM CODE'));
+  steps.join.appendChild(makeText('Type the 4-letter code from the host:'));
+  steps.join.appendChild(makeCodeInput('mp-join-input'));
+  steps.join.appendChild(makeBtn('JOIN', '#30A830', () => mpJoin(steps)));
   steps.join.appendChild(document.createElement('br'));
-  steps.join.appendChild(makeBtn('CANCEL', '#C83030', () => mpCancel(steps)));
-  steps.join.appendChild(makeStatus('mp-status-join'));
+  steps.join.appendChild(makeBtn('BACK', '#C83030', () => mpShowStep(steps, 'menu')));
+  steps.join.appendChild(makeStatus('mp-join-status'));
 
-  // ── Step: Join Answer ──
-  steps.joinAnswer = document.createElement('div');
-  steps.joinAnswer.style.display = 'none';
-  steps.joinAnswer.appendChild(makeHeading('JOIN \u2014 STEP 2 OF 2'));
-  steps.joinAnswer.appendChild(makeText('Send this response code back to the host:'));
-  steps.joinAnswer.appendChild(makeTextarea('mp-answer-text', null, true));
-  steps.joinAnswer.appendChild(makeBtn('COPY RESPONSE', '#3066C8', mpCopyAnswer));
-  steps.joinAnswer.appendChild(makeText('Waiting for connection...'));
-  steps.joinAnswer.appendChild(makeBtn('CANCEL', '#C83030', () => mpCancel(steps)));
-  steps.joinAnswer.appendChild(makeStatus('mp-status-join2'));
-
-  // ── Step: Connected ──
+  // ── Connected ──
   steps.connected = document.createElement('div');
   steps.connected.style.display = 'none';
   steps.connected.appendChild(makeHeading('CONNECTED!'));
-  steps.connected.appendChild(makeText('Peer-to-peer link established.\nStarting game...', '#88FF44'));
+  steps.connected.appendChild(makeText('Peer-to-peer link established.', '#88FF44'));
+  steps.connected.appendChild(makeText('Starting game...'));
 
-  // Add all steps to panel
   for (const step of Object.values(steps)) panel.appendChild(step);
   multiplayerUI.appendChild(panel);
   document.body.appendChild(multiplayerUI);
-
-  // Store steps ref for switching
   multiplayerUI._steps = steps;
 }
 
 function closeMultiplayerMenu() {
-  if (multiplayerUI) {
-    multiplayerUI.remove();
-    multiplayerUI = null;
-  }
+  if (multiplayerUI) { multiplayerUI.remove(); multiplayerUI = null; }
 }
 
 function mpShowStep(steps, name) {
@@ -169,179 +160,123 @@ function mpSetStatus(id, text) {
   if (el) el.textContent = text;
 }
 
-// ─── Compress/decompress SDP for shorter codes ──────────────
-function compressSDP(sdp) {
-  return btoa(JSON.stringify(sdp));
-}
-
-function decompressSDP(compressed) {
-  return JSON.parse(atob(compressed));
-}
-
-// ─── Host Flow ───────────────────────────────────────────────
-async function mpStartHost(steps) {
+// ─── Host ────────────────────────────────────────────────────
+function mpHost(steps) {
+  roomCode = generateRoomCode();
   isHost = true;
   connectionState = 'waiting';
-  mpShowStep(steps, 'hostOffer');
-  mpSetStatus('mp-status', 'Creating offer...');
+  mpShowStep(steps, 'host');
 
-  peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const codeEl = document.getElementById('mp-room-code');
+  if (codeEl) codeEl.textContent = roomCode;
+  mpSetStatus('mp-host-status', 'Connecting to signaling...');
 
-  dataChannel = peerConnection.createDataChannel('game', {
-    ordered: true, maxRetransmits: 0,
-  });
-  setupDataChannel(dataChannel, steps);
+  peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
 
-  const candidates = [];
-  peerConnection.onicecandidate = (e) => {
-    if (e.candidate) candidates.push(e.candidate);
-  };
-
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-
-  // Wait for ICE gathering
-  await new Promise(resolve => {
-    if (peerConnection.iceGatheringState === 'complete') resolve();
-    else peerConnection.onicegatheringstatechange = () => {
-      if (peerConnection.iceGatheringState === 'complete') resolve();
-    };
-    setTimeout(resolve, 5000);
+  peer.on('open', () => {
+    mpSetStatus('mp-host-status', 'Room open. Waiting for opponent...');
   });
 
-  const offerData = { sdp: peerConnection.localDescription, candidates };
-  document.getElementById('mp-offer-text').value = compressSDP(offerData);
-  mpSetStatus('mp-status', 'Code ready. Send it to your friend!');
-}
+  peer.on('connection', (conn) => {
+    peerConn = conn;
+    setupPeerConnection(conn, steps);
+  });
 
-function mpCopyOffer() {
-  const ta = document.getElementById('mp-offer-text');
-  ta.select();
-  navigator.clipboard.writeText(ta.value);
-  mpSetStatus('mp-status', 'Copied to clipboard!');
-}
-
-async function mpHostAcceptAnswer(steps) {
-  const answerText = document.getElementById('mp-answer-input').value.trim();
-  if (!answerText) { mpSetStatus('mp-status', 'Paste the response code first!'); return; }
-
-  try {
-    mpSetStatus('mp-status', 'Connecting...');
-    const answerData = decompressSDP(answerText);
-    await peerConnection.setRemoteDescription(answerData.sdp);
-    for (const c of answerData.candidates) {
-      await peerConnection.addIceCandidate(c);
+  peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') {
+      // Code collision — try another
+      peer.destroy();
+      roomCode = generateRoomCode();
+      if (codeEl) codeEl.textContent = roomCode;
+      mpSetStatus('mp-host-status', 'Code taken, trying ' + roomCode + '...');
+      peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
+      peer.on('open', () => mpSetStatus('mp-host-status', 'Room open. Waiting for opponent...'));
+      peer.on('connection', (conn) => { peerConn = conn; setupPeerConnection(conn, steps); });
+    } else {
+      mpSetStatus('mp-host-status', 'Error: ' + err.type);
     }
-  } catch (e) {
-    mpSetStatus('mp-status', 'Invalid code. Try again.');
-  }
+  });
 }
 
-// ─── Join Flow ───────────────────────────────────────────────
-function mpStartJoin(steps) {
+// ─── Join ────────────────────────────────────────────────────
+function mpJoin(steps) {
+  const input = document.getElementById('mp-join-input');
+  const code = (input ? input.value : '').toUpperCase().trim();
+  if (code.length !== 4) {
+    mpSetStatus('mp-join-status', 'Enter a 4-character code');
+    return;
+  }
+
   isHost = false;
+  roomCode = code;
   connectionState = 'connecting';
-  mpShowStep(steps, 'join');
-}
+  mpSetStatus('mp-join-status', 'Connecting...');
 
-async function mpJoinCreateAnswer(steps) {
-  const offerText = document.getElementById('mp-join-offer-input').value.trim();
-  if (!offerText) { mpSetStatus('mp-status-join', 'Paste the host code first!'); return; }
+  peer = new Peer(undefined, { debug: 0 });
 
-  try {
-    mpSetStatus('mp-status-join', 'Processing...');
-    const offerData = decompressSDP(offerText);
+  peer.on('open', () => {
+    const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+    peerConn = conn;
+    setupPeerConnection(conn, steps);
+  });
 
-    peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    peerConnection.ondatachannel = (e) => {
-      dataChannel = e.channel;
-      setupDataChannel(dataChannel, steps);
-    };
-
-    const candidates = [];
-    peerConnection.onicecandidate = (e) => {
-      if (e.candidate) candidates.push(e.candidate);
-    };
-
-    await peerConnection.setRemoteDescription(offerData.sdp);
-    for (const c of offerData.candidates) {
-      await peerConnection.addIceCandidate(c);
+  peer.on('error', (err) => {
+    if (err.type === 'peer-unavailable') {
+      mpSetStatus('mp-join-status', 'Room not found. Check the code.');
+    } else {
+      mpSetStatus('mp-join-status', 'Error: ' + err.type);
     }
-
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-
-    await new Promise(resolve => {
-      if (peerConnection.iceGatheringState === 'complete') resolve();
-      else peerConnection.onicegatheringstatechange = () => {
-        if (peerConnection.iceGatheringState === 'complete') resolve();
-      };
-      setTimeout(resolve, 5000);
-    });
-
-    const answerData = { sdp: peerConnection.localDescription, candidates };
-    mpShowStep(steps, 'joinAnswer');
-    document.getElementById('mp-answer-text').value = compressSDP(answerData);
-    mpSetStatus('mp-status-join2', 'Send this code back to the host!');
-  } catch (e) {
-    mpSetStatus('mp-status-join', 'Invalid host code. Try again.');
-  }
+  });
 }
 
-function mpCopyAnswer() {
-  const ta = document.getElementById('mp-answer-text');
-  ta.select();
-  navigator.clipboard.writeText(ta.value);
-  mpSetStatus('mp-status-join2', 'Copied to clipboard!');
-}
-
-function mpCancel(steps) {
-  if (peerConnection) { peerConnection.close(); peerConnection = null; }
-  dataChannel = null;
-  isOnline = false;
-  connectionState = 'disconnected';
-  mpShowStep(steps, 'menu');
-}
-
-// ─── Data Channel ────────────────────────────────────────────
-function setupDataChannel(channel, steps) {
-  channel.onopen = () => {
-    console.log('P2P DataChannel open!');
+// ─── Connection ──────────────────────────────────────────────
+function setupPeerConnection(conn, steps) {
+  conn.on('open', () => {
+    console.log('P2P connected! Room:', roomCode);
     connectionState = 'connected';
     isOnline = true;
-    if (steps) mpShowStep(steps, 'connected');
+    mpShowStep(steps, 'connected');
     setTimeout(() => {
       closeMultiplayerMenu();
       if (gameState === STATE.TITLE || gameState === STATE.NARRATIVE) {
         gameState = STATE.GENERATING;
       }
     }, 1500);
-  };
+  });
 
-  channel.onclose = () => {
-    console.log('P2P DataChannel closed');
+  conn.on('data', (data) => {
+    if (data && data.type === 'input') {
+      remoteKeys = data.keys;
+    }
+  });
+
+  conn.on('close', () => {
+    console.log('P2P disconnected');
     isOnline = false;
     connectionState = 'disconnected';
-  };
+  });
 
-  channel.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'input') {
-        remoteKeys = msg.keys;
-      }
-    } catch (err) {}
-  };
+  conn.on('error', (err) => {
+    console.error('P2P error:', err);
+  });
 }
 
-// ─── Send local input state ──────────────────────────────────
+function mpDisconnect(steps) {
+  if (peerConn) { peerConn.close(); peerConn = null; }
+  if (peer) { peer.destroy(); peer = null; }
+  isOnline = false;
+  connectionState = 'disconnected';
+  mpShowStep(steps, 'menu');
+}
+
+// ─── Input sync ──────────────────────────────────────────────
 let mpSendTimer = 0;
 
 function mpSendInput(dt) {
-  if (!isOnline || !dataChannel || dataChannel.readyState !== 'open') return;
+  if (!isOnline || !peerConn || !peerConn.open) return;
 
   mpSendTimer += dt;
-  if (mpSendTimer < 0.016) return; // ~60fps
+  if (mpSendTimer < 0.016) return;
   mpSendTimer = 0;
 
   const localControls = isHost
@@ -353,9 +288,7 @@ function mpSendInput(dt) {
     inputState[code] = !!keys[code];
   }
 
-  try {
-    dataChannel.send(JSON.stringify({ type: 'input', keys: inputState }));
-  } catch (e) {}
+  try { peerConn.send({ type: 'input', keys: inputState }); } catch (e) {}
 }
 
 function mpApplyRemoteInput() {
@@ -365,12 +298,12 @@ function mpApplyRemoteInput() {
   }
 }
 
-// ─── Draw online status on title screen ──────────────────────
+// ─── Title screen indicator ──────────────────────────────────
 function drawOnlineButton() {
   if (isOnline) {
     ctx.fillStyle = '#30A830';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('ONLINE: CONNECTED', W / 2, H / 2 + 160);
+    ctx.fillText('ONLINE: CONNECTED  [' + roomCode + ']', W / 2, H / 2 + 160);
   }
 }
