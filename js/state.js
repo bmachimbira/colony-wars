@@ -29,3 +29,17 @@ let powerUpTimer = 0;
 let waveTimer = 0;
 let waveCount = 0;
 let worms = [];
+let tileSeed = [];
+let screenShake = 0;
+let dustMotes = [];
+
+// Pre-render vignette overlay
+const vignetteCanvas = document.createElement('canvas');
+vignetteCanvas.width = W;
+vignetteCanvas.height = H;
+const vctx = vignetteCanvas.getContext('2d');
+const vgrad = vctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+vgrad.addColorStop(0, 'rgba(0,0,0,0)');
+vgrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+vctx.fillStyle = vgrad;
+vctx.fillRect(0, 0, W, H);

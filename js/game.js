@@ -53,6 +53,20 @@ function update(dt) {
 
   roundTimer += dt;
 
+  // Decay screen shake
+  if (screenShake > 0.1) screenShake *= 0.85;
+  else screenShake = 0;
+
+  // Update dust motes
+  for (const d of dustMotes) {
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    if (d.x < 0) d.x = W;
+    if (d.x > W) d.x = 0;
+    if (d.y < 0) d.y = H;
+    if (d.y > H) d.y = 0;
+  }
+
   // Update queens
   for (const q of queens) {
     updateQueen(q, dt);
@@ -110,6 +124,23 @@ function startNewRound() {
   powerUpTimer = 1;
   waveTimer = 30;
   waveCount = 0;
+
+  // Generate per-tile random seeds for visual variation
+  tileSeed = [];
+  for (let y = 0; y < ROWS; y++) {
+    tileSeed[y] = [];
+    for (let x = 0; x < COLS; x++) tileSeed[y][x] = Math.random();
+  }
+
+  // Spawn ambient dust motes
+  dustMotes = [];
+  for (let i = 0; i < 25; i++) {
+    dustMotes.push({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 4 - 2,
+      size: 1 + Math.random() * 2, alpha: 0.05 + Math.random() * 0.1,
+    });
+  }
 
   const spawns = generateMap();
 

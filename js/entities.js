@@ -47,16 +47,28 @@ function fireBullet(q) {
 }
 
 // ─── Particles ───────────────────────────────────────────────
-function spawnParticles(x, y, color, count) {
-  for (let i = 0; i < count; i++) {
+function spawnParticles(x, y, color, count, type) {
+  if (particles.length >= PARTICLE_CAP) return;
+  for (let i = 0; i < count && particles.length < PARTICLE_CAP; i++) {
     const angle = Math.random() * Math.PI * 2;
     const spd = 30 + Math.random() * 60;
     particles.push({
       x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
       vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
       life: 0.3 + Math.random() * 0.4, color, size: 2 + Math.random() * 3,
+      type: type || 'default',
     });
   }
+}
+
+function spawnTrailParticle(px, py, color) {
+  if (particles.length >= PARTICLE_CAP) return;
+  particles.push({
+    x: px, y: py,
+    vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+    life: 0.15 + Math.random() * 0.1, color, size: 1.5 + Math.random(),
+    type: 'trail',
+  });
 }
 
 // ─── Queen Update ────────────────────────────────────────────
@@ -145,6 +157,11 @@ function updateBullets(dt) {
     b.x += b.dx * b.speed * dt;
     b.y += b.dy * b.speed * dt;
 
+    // Spawn trail particle
+    if (Math.random() < 0.4) {
+      spawnTrailParticle(b.x * TILE, b.y * TILE, b.blast >= 3 ? '#FFAA44' : '#88FF44');
+    }
+
     const tx = Math.floor(b.x), ty = Math.floor(b.y);
 
     // Out of bounds
@@ -188,6 +205,7 @@ function updateBullets(dt) {
           } else {
             q.hp--;
             q.invTimer = 0.5;
+            screenShake = q.hp <= 0 ? 12 : 6;
           }
           playHit();
           spawnParticles(Math.round(q.x), Math.round(q.y), q.colony === 'blue' ? COLORS.p1 : COLORS.p2, 8);

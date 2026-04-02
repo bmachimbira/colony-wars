@@ -19,54 +19,127 @@ function draw() {
 
   if (!map.length || !queens.length) return;
 
+  // Apply screen shake
+  ctx.save();
+  if (screenShake > 0.5) {
+    ctx.translate(
+      (Math.random() - 0.5) * screenShake,
+      (Math.random() - 0.5) * screenShake
+    );
+  }
+
   // Draw map
+  const now = performance.now();
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const t = map[y][x];
       const px = x * TILE, py = y * TILE;
+      const seed = (tileSeed[y] && tileSeed[y][x]) || 0;
 
       if (t === T.DIRT) {
-        ctx.fillStyle = COLORS.dirt;
+        // Per-tile color variation
+        const bright = Math.floor(seed * 12) - 6;
+        const r = 0x5C + bright, g = 0x40 + Math.floor(bright * 0.6), b = 0x23 + Math.floor(bright * 0.3);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.fillRect(px, py, TILE, TILE);
+        // Border
         ctx.strokeStyle = COLORS.dirtBord;
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
-        // Grain lines
+        // Randomized grain lines using seed
         ctx.strokeStyle = COLORS.dirtBord;
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(px + 5, py + 10); ctx.lineTo(px + 16, py + 10);
-        ctx.moveTo(px + 14, py + 22); ctx.lineTo(px + 27, py + 22);
-        ctx.moveTo(px + 3, py + 17); ctx.lineTo(px + 10, py + 17);
+        const ox = seed * 8, oy = seed * 6;
+        ctx.moveTo(px + 3 + ox, py + 8 + oy); ctx.lineTo(px + 14 + ox, py + 8 + oy);
+        ctx.moveTo(px + 10 - ox, py + 20 - oy); ctx.lineTo(px + 25 - ox, py + 20 - oy);
+        ctx.moveTo(px + 2 + oy, py + 15 + ox); ctx.lineTo(px + 9 + oy, py + 15 + ox);
         ctx.stroke();
+        // Pebble dots on ~25% of tiles
+        if (seed > 0.75) {
+          ctx.fillStyle = 'rgba(100,80,55,0.6)';
+          ctx.beginPath();
+          ctx.arc(px + 10 + seed * 12, py + 12 + seed * 8, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          if (seed > 0.88) {
+            ctx.beginPath();
+            ctx.arc(px + 22 - seed * 6, py + 24 - seed * 4, 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       } else if (t === T.ROCK) {
-        ctx.fillStyle = COLORS.rock;
+        // Base with subtle per-tile variation
+        const rb = Math.floor(seed * 16) - 8;
+        ctx.fillStyle = `rgb(${0x6B + rb},${0x6B + rb},${0x6B + rb})`;
         ctx.fillRect(px, py, TILE, TILE);
+        // Shadow bevel (bottom-right darker)
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(px + TILE - 4, py + 4, 4, TILE - 4);
+        ctx.fillRect(px + 4, py + TILE - 4, TILE - 4, 4);
+        // Light bevel (top-left lighter)
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(px, py, TILE - 4, 3);
+        ctx.fillRect(px, py, 3, TILE - 4);
+        // Border
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+        // Seed-based highlight positions
+        const hx1 = 4 + Math.floor(seed * 10), hy1 = 4 + Math.floor(seed * 8);
+        const hx2 = 14 + Math.floor(seed * 8), hy2 = 14 + Math.floor(seed * 6);
         ctx.fillStyle = COLORS.rockHi;
-        ctx.fillRect(px + 6, py + 6, 8, 5);
-        ctx.fillRect(px + 18, py + 16, 6, 5);
-        ctx.fillRect(px + 4, py + 20, 5, 4);
+        ctx.fillRect(px + hx1, py + hy1, 7, 4);
+        ctx.fillRect(px + hx2, py + hy2, 5, 4);
+        // Crack lines on ~30% of rocks
+        if (seed > 0.7) {
+          ctx.strokeStyle = 'rgba(40,40,40,0.5)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(px + 8 + seed * 10, py + 4);
+          ctx.lineTo(px + 12 + seed * 6, py + 14);
+          ctx.lineTo(px + 10 + seed * 8, py + 24);
+          ctx.stroke();
+        }
       } else if (t === T.PUDDLE) {
         ctx.fillStyle = COLORS.puddle;
         ctx.fillRect(px, py, TILE, TILE);
+        // Animated dual wave lines
         ctx.strokeStyle = '#4080D0';
         ctx.lineWidth = 1;
+        const waveOff = Math.sin(now / 800 + seed * Math.PI * 2) * 3;
+        const waveOff2 = Math.sin(now / 600 + seed * Math.PI * 4) * 2;
         ctx.beginPath();
-        ctx.moveTo(px + 3, py + 10); ctx.quadraticCurveTo(px + 12, py + 6, px + 21, py + 10);
+        ctx.moveTo(px + 2, py + 10 + waveOff);
+        ctx.quadraticCurveTo(px + 12, py + 6 + waveOff, px + 22, py + 10 + waveOff);
         ctx.stroke();
+        ctx.strokeStyle = 'rgba(100,160,230,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(px + 5, py + 18 + waveOff2);
+        ctx.quadraticCurveTo(px + 16, py + 22 + waveOff2, px + 28, py + 18 + waveOff2);
+        ctx.stroke();
+        // Subtle shimmer highlight
+        ctx.fillStyle = 'rgba(150,200,255,0.15)';
+        ctx.beginPath();
+        ctx.ellipse(px + 10 + waveOff, py + 14, 4, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
       } else if (t === T.LEAF) {
         ctx.fillStyle = COLORS.dug;
         ctx.fillRect(px, py, TILE, TILE);
         ctx.fillStyle = COLORS.leaf;
         ctx.globalAlpha = 0.5;
         ctx.beginPath();
-        ctx.ellipse(px + 8, py + 10, 6, 4, 0.3, 0, Math.PI * 2);
+        ctx.ellipse(px + 8, py + 10, 6, 4, 0.3 + seed, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.ellipse(px + 16, py + 16, 5, 3, -0.5, 0, Math.PI * 2);
+        ctx.ellipse(px + 16, py + 16, 5, 3, -0.5 + seed * 0.5, 0, Math.PI * 2);
         ctx.fill();
+        // Leaf vein
+        ctx.strokeStyle = 'rgba(30,50,20,0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(px + 5, py + 10);
+        ctx.lineTo(px + 11, py + 10);
+        ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (t === T.DUG || t === T.TUNNEL) {
         ctx.fillStyle = COLORS.dirt;
@@ -80,20 +153,11 @@ function draw() {
           return nt === T.DUG || nt === T.TUNNEL || nt === T.LEAF;
         };
         const up = isOpen(0, -1), down = isOpen(0, 1), left = isOpen(-1, 0), right = isOpen(1, 0);
-        const tl = isOpen(-1, -1), tr = isOpen(1, -1), bl = isOpen(-1, 1), br = isOpen(1, 1);
-        ctx.fillStyle = COLORS.dug;
-        ctx.beginPath();
-        // Top-left corner
-        if (up && left && tl) { ctx.moveTo(px, py); }
-        else if (up && left) { ctx.moveTo(px, py); }
-        else if (up) { ctx.moveTo(px + r, py); ctx.quadraticCurveTo(px, py, px, py + r); ctx.lineTo(px, py); ctx.moveTo(px + r, py); }
-        else if (left) { ctx.moveTo(px, py + r); ctx.quadraticCurveTo(px, py, px + r, py); ctx.lineTo(px, py); ctx.moveTo(px, py + r); }
-        else { ctx.moveTo(px + r, py); }
-        // Draw as rounded rect with selective corners
         const rtl = (up || left) ? (up && left ? 0 : r * 0.5) : r;
         const rtr = (up || right) ? (up && right ? 0 : r * 0.5) : r;
         const rbr = (down || right) ? (down && right ? 0 : r * 0.5) : r;
         const rbl = (down || left) ? (down && left ? 0 : r * 0.5) : r;
+        ctx.fillStyle = COLORS.dug;
         ctx.beginPath();
         ctx.moveTo(px + rtl, py);
         ctx.lineTo(px + TILE - rtr, py);
@@ -110,48 +174,142 @@ function draw() {
         else ctx.lineTo(px, py);
         ctx.closePath();
         ctx.fill();
+        // Inner shadow for depth
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
     }
   }
 
   // Draw spawn mounds
   for (const mound of mounds) {
-    const mx = mound.x * TILE, my = mound.y * TILE;
-    const pulse = Math.sin(performance.now() / 200) * 0.3 + 0.7;
+    const mx = mound.x * TILE + TILE / 2, my = mound.y * TILE + TILE / 2;
+    const pulse = Math.sin(now / 200) * 0.3 + 0.7;
+
     if (mound.state === 'ACTIVE') {
-      ctx.fillStyle = COLORS.moundGold;
-      ctx.globalAlpha = pulse;
-      ctx.fillRect(mx + 2, my + 2, TILE - 4, TILE - 4);
-      ctx.globalAlpha = 1;
+      // Sonar ring beacon
+      const ringPhase = (now / 1000) % 1;
       ctx.strokeStyle = COLORS.moundGold;
       ctx.lineWidth = 2;
-      ctx.strokeRect(mx + 1, my + 1, TILE - 2, TILE - 2);
+      ctx.globalAlpha = (1 - ringPhase) * 0.5;
+      ctx.beginPath();
+      ctx.arc(mx, my, TILE * 0.3 + ringPhase * TILE * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // Dome shape
+      const grad = ctx.createRadialGradient(mx - 3, my - 3, 1, mx, my, TILE * 0.4);
+      grad.addColorStop(0, '#FFE070');
+      grad.addColorStop(1, '#C8A020');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(mx, my, TILE * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      // Pulsing glow
+      ctx.globalAlpha = pulse * 0.3;
+      ctx.fillStyle = COLORS.moundGold;
+      ctx.beginPath();
+      ctx.arc(mx, my, TILE * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Sparkle dot
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(mx - 4, my - 4, 2, 0, Math.PI * 2);
+      ctx.fill();
     } else if (mound.state === 'CLAIMED') {
       const col = mound.claimedBy === 'blue' ? COLORS.p1 : COLORS.p2;
-      ctx.fillStyle = COLORS.moundGold;
-      ctx.fillRect(mx + 2, my + 2, TILE - 4, TILE - 4);
+      // Colony-colored dome
+      const grad = ctx.createRadialGradient(mx - 3, my - 3, 1, mx, my, TILE * 0.4);
+      grad.addColorStop(0, COLORS.moundGold);
+      grad.addColorStop(1, col);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(mx, my, TILE * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      // Colony border
       ctx.strokeStyle = col;
       ctx.lineWidth = 2;
-      ctx.strokeRect(mx + 1, my + 1, TILE - 2, TILE - 2);
+      ctx.beginPath();
+      ctx.arc(mx, my, TILE * 0.38, 0, Math.PI * 2);
+      ctx.stroke();
+      // Flag marker
+      ctx.fillStyle = col;
+      ctx.fillRect(mx - 1, my - TILE * 0.5, 2, TILE * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(mx + 1, my - TILE * 0.5);
+      ctx.lineTo(mx + 8, my - TILE * 0.4);
+      ctx.lineTo(mx + 1, my - TILE * 0.3);
+      ctx.fill();
     }
   }
 
-  // Draw power-ups
+  // Draw power-ups with unique colors and icons
   for (const powerUp of powerUps) {
-    const px = powerUp.x * TILE, py = powerUp.y * TILE;
-    const pulse = Math.sin(performance.now() / 250) * 0.3 + 0.7;
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = COLORS.powerUp;
+    const pcx = powerUp.x * TILE + TILE / 2, pcy = powerUp.y * TILE + TILE / 2;
+    const pulse = Math.sin(now / 250) * 0.3 + 0.7;
+    const col = POWER_COLORS[powerUp.type] || COLORS.powerUp;
+
+    // Outer pulsing ring
+    ctx.globalAlpha = pulse * 0.3;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.35, 0, Math.PI * 2);
+    ctx.arc(pcx, pcy, TILE * 0.45, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Filled circle with gradient
+    const pg = ctx.createRadialGradient(pcx - 2, pcy - 2, 1, pcx, pcy, TILE * 0.35);
+    pg.addColorStop(0, '#fff');
+    pg.addColorStop(0.3, col);
+    pg.addColorStop(1, col);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = pg;
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, TILE * 0.32, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
-    // Type indicator
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 13px monospace';
-    ctx.textAlign = 'center';
-    const label = { SUGAR: 'S', RAPID: 'R', SHIELD: 'A', MEGA: 'M' }[powerUp.type];
-    ctx.fillText(label, px + TILE / 2, py + TILE / 2 + 3);
+
+    // Type-specific icons
+    ctx.strokeStyle = '#fff';
+    ctx.fillStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    if (powerUp.type === 'SUGAR') {
+      // Crystal dots
+      for (let ci = 0; ci < 3; ci++) {
+        const a = (ci / 3) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(pcx + Math.cos(a) * 5, pcy + Math.sin(a) * 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (powerUp.type === 'RAPID') {
+      // Speed lines
+      ctx.beginPath();
+      ctx.moveTo(pcx - 5, pcy - 3); ctx.lineTo(pcx + 5, pcy - 3);
+      ctx.moveTo(pcx - 3, pcy); ctx.lineTo(pcx + 7, pcy);
+      ctx.moveTo(pcx - 5, pcy + 3); ctx.lineTo(pcx + 5, pcy + 3);
+      ctx.stroke();
+    } else if (powerUp.type === 'SHIELD') {
+      // Shield arc
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(pcx, pcy, 6, -Math.PI * 0.8, Math.PI * 0.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(pcx, pcy, 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (powerUp.type === 'MEGA') {
+      // Starburst
+      for (let si = 0; si < 4; si++) {
+        const a = (si / 4) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(pcx, pcy);
+        ctx.lineTo(pcx + Math.cos(a) * 7, pcy + Math.sin(a) * 7);
+        ctx.stroke();
+      }
+    }
   }
 
   // Draw worms (only visible once dirt is dug away)
@@ -160,8 +318,7 @@ function draw() {
     if (tile === T.DUG || tile === T.TUNNEL) {
       drawWorm(w, 1);
     } else if (tile === T.DIRT) {
-      // Subtle hint — small wiggle poking out of the dirt
-      drawWorm(w, 0.5);
+      drawWorm(w, 0.25);
     }
   }
 
@@ -186,40 +343,112 @@ function draw() {
     if (q.activePowerUp === 'SHIELD') {
       ctx.strokeStyle = '#88DDFF';
       ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.6 + Math.sin(now / 150) * 0.3;
       ctx.beginPath();
       ctx.arc(q.x * TILE + TILE / 2, q.y * TILE + TILE / 2, TILE * 0.6, 0, Math.PI * 2);
       ctx.stroke();
+      // Second ring for glow effect
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(q.x * TILE + TILE / 2, q.y * TILE + TILE / 2, TILE * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 
-  // Draw bullets
+  // Draw bullets with glow
   for (const b of bullets) {
-    ctx.fillStyle = '#88FF44';
+    const bpx = b.x * TILE, bpy = b.y * TILE;
+    const isMega = b.blast >= 3;
+    const radius = isMega ? 7 : 4;
+    const glowCol = isMega ? '#FFAA44' : '#88FF44';
+
+    ctx.save();
+    ctx.shadowColor = glowCol;
+    ctx.shadowBlur = isMega ? 16 : 10;
+    // Direction-aware ellipse
+    ctx.translate(bpx, bpy);
+    ctx.rotate(Math.atan2(b.dy, b.dx));
+    ctx.fillStyle = glowCol;
     ctx.beginPath();
-    ctx.arc(b.x * TILE, b.y * TILE, b.blast >= 3 ? 7 : 4, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, radius * 1.4, radius * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Bright core
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radius * 0.5, radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
-  // Draw particles
+  // Draw particles (upgraded: round with types)
   for (const p of particles) {
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.life / 0.7;
-    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    ctx.globalAlpha = Math.min(1, p.life / 0.4);
+    if (p.type === 'trail') {
+      // Glowing trail particle
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha *= 0.6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.type === 'sparkle') {
+      // 4-point star
+      ctx.fillStyle = p.color;
+      const ss = p.size;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - ss);
+      ctx.lineTo(p.x + ss * 0.3, p.y);
+      ctx.lineTo(p.x, p.y + ss);
+      ctx.lineTo(p.x - ss * 0.3, p.y);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Default round particle
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 
-  // Draw HUD
+  // Vignette overlay
+  ctx.drawImage(vignetteCanvas, 0, 0);
+
+  // Ambient dust motes
+  for (const d of dustMotes) {
+    ctx.fillStyle = 'rgba(180,160,120,' + d.alpha + ')';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // End screen shake transform
+  ctx.restore();
+
+  // Draw HUD (outside shake transform)
   drawHUD();
 
   // Countdown overlay
   if (gameState === STATE.COUNTDOWN) {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0, 0, W, H);
+    const num = Math.ceil(countdownTimer);
+    // Bounce scale effect
+    const frac = countdownTimer - Math.floor(countdownTimer);
+    const scale = 1 + Math.max(0, frac - 0.7) * 2;
+    ctx.save();
+    ctx.translate(W / 2, H / 2 + 20);
+    ctx.scale(scale, scale);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 64px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(Math.ceil(countdownTimer), W / 2, H / 2 + 20);
+    ctx.fillText(num, 0, 0);
+    ctx.restore();
+    ctx.fillStyle = '#ccc';
     ctx.font = '18px monospace';
+    ctx.textAlign = 'center';
     ctx.fillText('ROUND ' + roundNum, W / 2, H / 2 - 50);
   }
 
@@ -470,38 +699,116 @@ function drawWorm(w, alpha) {
   ctx.restore();
 }
 
+// ─── Helper: rounded rect ───
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ─── Helper: draw heart shape ───
+function drawHeart(cx, cy, size, filled) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.beginPath();
+  ctx.moveTo(0, size * 0.3);
+  ctx.bezierCurveTo(-size * 0.5, -size * 0.3, -size, size * 0.1, 0, size);
+  ctx.bezierCurveTo(size, size * 0.1, size * 0.5, -size * 0.3, 0, size * 0.3);
+  ctx.closePath();
+  if (filled) ctx.fill();
+  else ctx.stroke();
+  ctx.restore();
+}
+
 function drawHUD() {
-  // P1 HP
-  ctx.font = 'bold 14px monospace';
+  const panelAlpha = 0.35;
+
+  // P1 panel (left)
+  ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
+  roundRect(4, 4, 140, 22, 6);
+  ctx.fill();
+
+  // P1 label
+  ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = COLORS.p1;
-  let hpText = 'P1: ';
-  for (let i = 0; i < queens[0].hp; i++) hpText += '\u2665';
-  ctx.fillText(hpText, 8, 18);
-  if (queens[0].activePowerUp) {
-    ctx.fillStyle = COLORS.powerUp;
-    ctx.fillText('[' + queens[0].activePowerUp + ']', 100, 18);
+  ctx.fillText('P1', 10, 19);
+
+  // P1 hearts
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < queens[0].hp ? COLORS.p1 : 'rgba(100,100,100,0.4)';
+    ctx.strokeStyle = i < queens[0].hp ? COLORS.p1 : 'rgba(100,100,100,0.4)';
+    ctx.lineWidth = 1;
+    drawHeart(36 + i * 16, 8, 6, i < queens[0].hp);
   }
 
-  // P2 HP
+  // P1 power-up indicator
+  if (queens[0].activePowerUp) {
+    const pcol = POWER_COLORS[queens[0].activePowerUp] || COLORS.powerUp;
+    ctx.fillStyle = pcol;
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(queens[0].activePowerUp, 88, 18);
+    // Timer bar
+    if (queens[0].powerUpTimer > 0) {
+      const barW = 48 * Math.min(1, queens[0].powerUpTimer / 80);
+      ctx.fillStyle = pcol;
+      ctx.fillRect(88, 20, barW, 2);
+    }
+  }
+
+  // P2 panel (right)
+  ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
+  roundRect(W - 144, 4, 140, 22, 6);
+  ctx.fill();
+
+  // P2 label
+  ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'right';
   ctx.fillStyle = COLORS.p2;
-  hpText = 'P2: ';
-  for (let i = 0; i < queens[1].hp; i++) hpText += '\u2665';
-  ctx.fillText(hpText, W - 8, 18);
-  if (queens[1].activePowerUp) {
-    ctx.fillStyle = COLORS.powerUp;
-    ctx.fillText('[' + queens[1].activePowerUp + ']', W - 100, 18);
+  ctx.fillText('P2', W - 10, 19);
+
+  // P2 hearts
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < queens[1].hp ? COLORS.p2 : 'rgba(100,100,100,0.4)';
+    ctx.strokeStyle = i < queens[1].hp ? COLORS.p2 : 'rgba(100,100,100,0.4)';
+    ctx.lineWidth = 1;
+    drawHeart(W - 82 + i * 16, 8, 6, i < queens[1].hp);
   }
 
-  // Round + score
+  // P2 power-up indicator
+  if (queens[1].activePowerUp) {
+    const pcol = POWER_COLORS[queens[1].activePowerUp] || COLORS.powerUp;
+    ctx.fillStyle = pcol;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(queens[1].activePowerUp, W - 88, 18);
+    if (queens[1].powerUpTimer > 0) {
+      const barW = 48 * Math.min(1, queens[1].powerUpTimer / 80);
+      ctx.fillStyle = pcol;
+      ctx.fillRect(W - 88 - barW, 20, barW, 2);
+    }
+  }
+
+  // Round + score (center)
+  ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
+  roundRect(W / 2 - 80, 4, 160, 22, 6);
+  ctx.fill();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ccc';
-  ctx.fillText('ROUND ' + roundNum + '  \u00B7  ' + scores[0] + '-' + scores[1], W / 2, 18);
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('ROUND ' + roundNum + '  \u00B7  ' + scores[0] + '-' + scores[1], W / 2, 19);
 
   // Control hints
   ctx.font = '10px monospace';
-  ctx.fillStyle = '#666';
+  ctx.fillStyle = '#555';
   ctx.textAlign = 'left';
   ctx.fillText('WASD+SPACE', 8, H - 8);
   ctx.textAlign = 'right';
@@ -512,16 +819,36 @@ function drawTitle() {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
 
+  // Vignette on title
+  ctx.drawImage(vignetteCanvas, 0, 0);
+
+  // Animated ant silhouettes walking across
+  const now = performance.now();
+  ctx.globalAlpha = 0.08;
+  for (let i = 0; i < 5; i++) {
+    const ax = ((now / 40 + i * W / 5) % (W + 60)) - 30;
+    const ay = H * 0.3 + i * 40 + Math.sin(now / 1000 + i) * 10;
+    drawAnt(ax / TILE, ay / TILE, 'right', '#fff', 0.5, 1, false, now / 100 + i, 3);
+  }
+  ctx.globalAlpha = 1;
+
   ctx.fillStyle = COLORS.moundGold;
   ctx.font = 'bold 48px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('COLONY CLASH', W / 2, H / 2 - 40);
 
+  // Title glow
+  ctx.save();
+  ctx.shadowColor = COLORS.moundGold;
+  ctx.shadowBlur = 20;
+  ctx.fillText('COLONY CLASH', W / 2, H / 2 - 40);
+  ctx.restore();
+
   ctx.fillStyle = '#999';
   ctx.font = '16px monospace';
   ctx.fillText('Queen vs. Queen \u2014 An Ant Colony Battle Arena', W / 2, H / 2 + 10);
 
-  const blink = Math.sin(performance.now() / 500) > 0;
+  const blink = Math.sin(now / 500) > 0;
   if (blink) {
     ctx.fillStyle = '#ccc';
     ctx.font = '14px monospace';
@@ -545,14 +872,20 @@ function drawTitle() {
 function drawMatchEnd() {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(vignetteCanvas, 0, 0);
 
   const winner = scores[0] >= 3 ? 0 : 1;
   const col = winner === 0 ? COLORS.p1 : COLORS.p2;
 
+  // Glow title
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 25;
   ctx.fillStyle = col;
   ctx.font = 'bold 36px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('P' + (winner + 1) + ' WINS!', W / 2, H / 2 - 30);
+  ctx.restore();
 
   ctx.fillStyle = '#ccc';
   ctx.font = '22px monospace';

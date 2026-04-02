@@ -30,3 +30,12 @@ const STATE = { TITLE: 0, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4,
 // Power-up types
 const POWER_TYPES = ['SUGAR', 'RAPID', 'SHIELD', 'MEGA'];
 const MAX_BULLETS_PER_PLAYER = 3;
+const PARTICLE_CAP = 200;
+
+// Power-up colors
+const POWER_COLORS = {
+  SUGAR: '#44DD44',
+  RAPID: '#FF8800',
+  SHIELD: '#44DDFF',
+  MEGA: '#FF44FF',
+};
