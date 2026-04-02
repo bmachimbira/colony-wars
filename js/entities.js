@@ -462,7 +462,7 @@ function updateSoldiers(dt) {
       }
     }
 
-    // Shoot at enemies
+    // Shoot at enemies — cardinal alignment OR close enough to fire toward them
     s.shootCooldown -= dt;
     if (s.shootCooldown <= 0) {
       const shootTargets = [enemy];
@@ -472,8 +472,18 @@ function updateSoldiers(dt) {
       for (const target of shootTargets) {
         const edx = Math.round(target.x) - Math.round(s.x);
         const edy = Math.round(target.y) - Math.round(s.y);
-        if ((edx === 0 && Math.abs(edy) <= 5) || (edy === 0 && Math.abs(edx) <= 5)) {
-          const bdir = edx === 0 ? (edy > 0 ? 'down' : 'up') : (edx > 0 ? 'right' : 'left');
+        const dist = Math.abs(edx) + Math.abs(edy);
+        // Fire if aligned (classic) OR within 4 tiles (close combat)
+        const aligned = (edx === 0 && Math.abs(edy) <= 5) || (edy === 0 && Math.abs(edx) <= 5);
+        const closeEnough = dist <= 4;
+        if (aligned || closeEnough) {
+          // Pick dominant axis to fire along
+          let bdir;
+          if (Math.abs(edx) >= Math.abs(edy)) {
+            bdir = edx > 0 ? 'right' : 'left';
+          } else {
+            bdir = edy > 0 ? 'down' : 'up';
+          }
           const bdx = { left: -1, right: 1, up: 0, down: 0 }[bdir];
           const bdy = { left: 0, right: 0, up: -1, down: 1 }[bdir];
           bullets.push({ x: s.x + 0.5, y: s.y + 0.5, dx: bdx, dy: bdy, speed: 5, owner: s.colony, blast: 1 });

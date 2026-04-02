@@ -482,6 +482,7 @@ function updateNarrative(dt) {
   if (keys['Escape']) {
     keys['Escape'] = false;
     gameState = STATE.TITLE;
+    localStorage.setItem('colonyClash_introSeen', '1');
     for (const k in keys) keys[k] = false;
     return;
   }
@@ -521,6 +522,7 @@ function updateNarrative(dt) {
       narrativePage++;
       if (narrativePage >= NARRATIVE_PAGES.length) {
         gameState = STATE.TITLE;
+        localStorage.setItem('colonyClash_introSeen', '1');
         // Clear keys so title doesn't instantly skip
         for (const k in keys) keys[k] = false;
       } else {

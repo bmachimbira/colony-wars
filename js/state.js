@@ -15,7 +15,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 // ─── Game State ──────────────────────────────────────────────
-let gameState = STATE.NARRATIVE;
+let gameState = localStorage.getItem('colonyClash_introSeen') ? STATE.TITLE : STATE.NARRATIVE;
 
 // ─── Narrative ───────────────────────────────────────────────
 const NARRATIVE_PAGES = [
