@@ -351,7 +351,7 @@ function applyPowerUp(q, pu) {
   }
 }
 
-// ─── Worms (decorative, no gameplay effect) ──────────────────
+// ─── Worms (hidden in dirt, give extra life when eaten) ──────
 function spawnWorms() {
   const count = 3 + Math.floor(Math.random() * 4); // 3-6 worms
   for (let i = 0; i < count; i++) {
@@ -360,14 +360,12 @@ function spawnWorms() {
       wx = Math.floor(Math.random() * COLS);
       wy = Math.floor(Math.random() * ROWS);
       attempts++;
-    } while (attempts < 100 && map[wy][wx] !== T.DUG);
+    } while (attempts < 100 && map[wy][wx] !== T.DIRT);
     if (attempts < 100) {
       worms.push({
         x: wx, y: wy,
-        dir: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
-        moveTimer: 1 + Math.random() * 3,
         wigglePhase: Math.random() * Math.PI * 2,
-        segments: 4 + Math.floor(Math.random() * 3), // 4-6 body segments
+        segments: 4 + Math.floor(Math.random() * 3),
       });
     }
   }
@@ -376,20 +374,17 @@ function spawnWorms() {
 function updateWorms(dt) {
   for (const w of worms) {
     w.wigglePhase += dt * 5;
-    w.moveTimer -= dt;
-    if (w.moveTimer <= 0) {
-      w.moveTimer = 1.5 + Math.random() * 3;
-      // Pick a random walkable neighbor
-      const dirs = [[0,-1,'up'],[0,1,'down'],[-1,0,'left'],[1,0,'right']];
-      const shuffled = dirs.sort(() => Math.random() - 0.5);
-      for (const [dx, dy, d] of shuffled) {
-        const nx = Math.round(w.x) + dx, ny = Math.round(w.y) + dy;
-        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && canWalk(nx, ny)) {
-          w.x = nx;
-          w.y = ny;
-          w.dir = d;
-          break;
-        }
+  }
+
+  // Check if any queen is on a worm's tile (tile must be dug out first)
+  for (const q of queens) {
+    const qx = Math.round(q.x), qy = Math.round(q.y);
+    for (let i = worms.length - 1; i >= 0; i--) {
+      const w = worms[i];
+      if (w.x === qx && w.y === qy && canWalk(qx, qy)) {
+        q.hp++;
+        spawnParticles(w.x, w.y, '#D4856A', 8);
+        worms.splice(i, 1);
       }
     }
   }

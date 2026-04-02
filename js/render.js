@@ -154,9 +154,15 @@ function draw() {
     ctx.fillText(label, px + TILE / 2, py + TILE / 2 + 3);
   }
 
-  // Draw worms
+  // Draw worms (only visible once dirt is dug away)
   for (const w of worms) {
-    drawWorm(w);
+    const tile = map[w.y][w.x];
+    if (tile === T.DUG || tile === T.TUNNEL) {
+      drawWorm(w, 1);
+    } else if (tile === T.DIRT) {
+      // Subtle hint — small wiggle poking out of the dirt
+      drawWorm(w, 0.25);
+    }
   }
 
   // Draw soldiers
@@ -413,15 +419,14 @@ function drawAnt(x, y, dir, color, scale, alpha, isQueen, bobPhase, hp) {
   ctx.restore();
 }
 
-function drawWorm(w) {
+function drawWorm(w, alpha) {
   const px = w.x * TILE + TILE / 2;
   const py = w.y * TILE + TILE / 2;
   const segLen = TILE * 0.18;
 
   ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.translate(px, py);
-  const angles = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-  ctx.rotate(angles[w.dir] || 0);
 
   // Draw segmented body trailing behind head
   ctx.lineCap = 'round';
