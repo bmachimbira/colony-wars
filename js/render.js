@@ -571,7 +571,59 @@ function draw() {
     ctx.fillStyle = '#444';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('ESC to quit', W / 2, H - 8);
+    ctx.fillText('ESC to pause', W / 2, H - 8);
+  }
+
+  // Pause menu overlay
+  if (gameState === STATE.PAUSED) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Panel
+    const pw = 280, ph = 200;
+    const plx = W / 2 - pw / 2, ply = H / 2 - ph / 2;
+    ctx.fillStyle = 'rgba(30,20,10,0.95)';
+    roundRect(plx, ply, pw, ph, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#E8C840';
+    ctx.lineWidth = 2;
+    roundRect(plx, ply, pw, ph, 12);
+    ctx.stroke();
+
+    // Title
+    ctx.fillStyle = '#E8C840';
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', W / 2, ply + 45);
+
+    // Menu options
+    const options = ['RESUME', 'EXIT TO MENU'];
+    for (let i = 0; i < options.length; i++) {
+      const oy = ply + 90 + i * 50;
+      const selected = pauseSelection === i;
+
+      if (selected) {
+        // Highlight bar
+        ctx.fillStyle = 'rgba(232,200,64,0.15)';
+        roundRect(plx + 20, oy - 18, pw - 40, 36, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#E8C840';
+        ctx.lineWidth = 1.5;
+        roundRect(plx + 20, oy - 18, pw - 40, 36, 6);
+        ctx.stroke();
+        // Arrow indicator
+        ctx.fillStyle = '#E8C840';
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText('\u25B6', W / 2 - 80, oy + 6);
+      }
+
+      ctx.fillStyle = selected ? '#fff' : '#888';
+      ctx.font = selected ? 'bold 20px monospace' : '18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(options[i], W / 2, oy + 6);
+    }
+
   }
 }
 
@@ -1341,9 +1393,9 @@ function drawHUD() {
   ctx.font = '10px monospace';
   ctx.fillStyle = '#555';
   ctx.textAlign = 'left';
-  ctx.fillText('WASD+SPACE  Q:special', 8, H - 8);
+  ctx.fillText('WASD+SPACE  Q/X:special', 8, H - 8);
   ctx.textAlign = 'right';
-  ctx.fillText('ARROWS+ENTER  RShift:special', W - 8, H - 8);
+  ctx.fillText('ARROWS+ENTER  RShift/X:special', W - 8, H - 8);
 }
 
 function drawNarrative() {
@@ -1521,9 +1573,9 @@ function drawCharSelect() {
   const panelW = W * 0.4;
   const panelH = H * 0.7;
   const descriptions = {
-    ANT: 'Drop lethal traps (Q/RShift)',
-    BEETLE: 'Fly to escape danger (Q/RShift)',
-    COCKROACH: 'Deflect bullets (Q/RShift)',
+    ANT: 'Drop lethal traps (Q/RShift/X)',
+    BEETLE: 'Fly to escape danger (Q/RShift/X)',
+    COCKROACH: 'Deflect bullets (Q/RShift/X)',
   };
 
   for (let p = 0; p < 2; p++) {
@@ -1888,34 +1940,87 @@ function drawCharacterPreview(charType, color, scale) {
 }
 
 function drawMatchEnd() {
+  const now = performance.now();
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(vignetteCanvas, 0, 0);
 
   const winner = scores[0] >= 3 ? 0 : 1;
   const col = (queens.length > winner && queens[winner]) ? queens[winner].color : (winner === 0 ? CHAR_COLORS[charSelect[0].colorIdx] : CHAR_COLORS[charSelect[1].colorIdx]);
   const winType = (queens.length > winner && queens[winner]) ? queens[winner].charType : CHAR_TYPES[charSelect[winner].charType];
+  const [wr, wg, wb] = rgb(col);
 
-  // Glow title — winner announcement
+  // Victory sparkle particles in background
+  for (let i = 0; i < 30; i++) {
+    const sx = (Math.sin(now / 1000 + i * 2.1) * 0.5 + 0.5) * W;
+    const sy = (Math.cos(now / 1200 + i * 1.7) * 0.5 + 0.5) * H;
+    const sparkAlpha = Math.sin(now / 300 + i * 0.8) * 0.3 + 0.3;
+    const sparkSize = 2 + Math.sin(now / 400 + i) * 1.5;
+    ctx.globalAlpha = sparkAlpha;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.drawImage(vignetteCanvas, 0, 0);
+
+  // ── Dancing winner character (large, center) ──
+  const dancePhase = now / 200; // fast dance rhythm
+  const bounce = Math.abs(Math.sin(dancePhase * 0.8)) * 15; // bouncing up/down
+  const sway = Math.sin(dancePhase * 0.6) * 8; // side-to-side sway
+  const tilt = Math.sin(dancePhase * 0.6) * 0.15; // body tilt
+
   ctx.save();
-  ctx.shadowColor = col;
-  ctx.shadowBlur = 30;
-  ctx.fillStyle = col;
-  ctx.font = 'bold 42px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('P' + (winner + 1) + ' ' + winType, W / 2, H / 2 - 40);
-  ctx.font = 'bold 28px monospace';
-  ctx.fillText('WINS THE MATCH!', W / 2, H / 2 + 5);
+  ctx.translate(W / 2 + sway, H * 0.48 - bounce);
+  ctx.rotate(tilt);
+
+  // Draw the winner's character using the preview function (big scale)
+  drawCharacterPreview(winType, col, 4.5);
+
   ctx.restore();
 
-  ctx.fillStyle = col;
-  ctx.font = 'bold 22px monospace';
-  ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H / 2 + 45);
+  // ── Spotlight glow behind character ──
+  const spotGrad = ctx.createRadialGradient(W / 2, H * 0.48, 10, W / 2, H * 0.48, H * 0.35);
+  spotGrad.addColorStop(0, shade(wr, wg, wb, 1.0).replace('rgb', 'rgba').replace(')', ',0.15)'));
+  spotGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = spotGrad;
+  ctx.fillRect(0, 0, W, H);
 
-  const blink = Math.sin(performance.now() / 500) > 0;
-  if (blink) {
-    ctx.fillStyle = '#999';
-    ctx.font = '14px monospace';
-    ctx.fillText('PRESS ANY KEY TO RESTART', W / 2, H / 2 + 70);
+  // ── Title text at top ──
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 35;
+  ctx.fillStyle = col;
+  ctx.font = 'bold 48px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('P' + (winner + 1) + ' ' + winType, W / 2, H * 0.12);
+  ctx.restore();
+
+  // "WINS THE MATCH" with pulsing glow
+  const glowPulse = Math.sin(now / 300) * 10 + 25;
+  ctx.save();
+  ctx.shadowColor = '#FFD700';
+  ctx.shadowBlur = glowPulse;
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 36px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('WINS THE MATCH!', W / 2, H * 0.2);
+  ctx.restore();
+
+  // Score
+  ctx.fillStyle = '#ccc';
+  ctx.font = 'bold 24px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H * 0.85);
+
+  // "Press any key" hint (only after delay)
+  if (matchEndTimer <= 0) {
+    const blink = Math.sin(now / 500) > 0;
+    if (blink) {
+      ctx.fillStyle = '#888';
+      ctx.font = '14px monospace';
+      ctx.fillText('PRESS ANY KEY TO CONTINUE', W / 2, H * 0.92);
+    }
   }
 }

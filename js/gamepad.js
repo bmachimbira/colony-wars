@@ -12,9 +12,9 @@
 
 const GAMEPAD_MAPS = [
   // Player 1
-  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space' },
+  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ' },
   // Player 2
-  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter' },
+  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter', special: 'ShiftRight' },
 ];
 
 const STICK_DEADZONE = 0.3;
@@ -53,10 +53,14 @@ function pollGamepads() {
     const dirLeft = dpadLeft || stickLeft;
     const dirRight = dpadRight || stickRight;
 
-    keys[map.up] = dirUp || (keys[map.up] && !isGamepadKey(map.up));
-    keys[map.down] = dirDown || (keys[map.down] && !isGamepadKey(map.down));
-    keys[map.left] = dirLeft || (keys[map.left] && !isGamepadKey(map.left));
-    keys[map.right] = dirRight || (keys[map.right] && !isGamepadKey(map.right));
+    // In char select, only use edge-detected keys — skip raw continuous updates
+    const inMenu = (typeof gameState !== 'undefined' && typeof STATE !== 'undefined' && gameState === STATE.CHAR_SELECT);
+    if (!inMenu) {
+      keys[map.up] = dirUp || (keys[map.up] && !isGamepadKey(map.up));
+      keys[map.down] = dirDown || (keys[map.down] && !isGamepadKey(map.down));
+      keys[map.left] = dirLeft || (keys[map.left] && !isGamepadKey(map.left));
+      keys[map.right] = dirRight || (keys[map.right] && !isGamepadKey(map.right));
+    }
 
     // ── Edge-detected menu keys (only fire on fresh press, for char select) ──
     if (dirUp && !prevDirs[gi].up) keys['_gp' + gi + 'Up'] = true;
@@ -73,6 +77,11 @@ function pollGamepads() {
                          (gp.buttons[5] && gp.buttons[5].pressed) ||
                          (gp.buttons[7] && gp.buttons[7].pressed);
     keys[map.shoot] = shootPressed || (keys[map.shoot] && !isGamepadKey(map.shoot));
+
+    // ── Special: X (2), LB (4) ──
+    const specialPressed = (gp.buttons[2] && gp.buttons[2].pressed) ||
+                           (gp.buttons[4] && gp.buttons[4].pressed);
+    keys[map.special] = specialPressed || (keys[map.special] && !isGamepadKey(map.special));
 
     // ── Start button (9) for menu navigation ──
     if (gp.buttons[9] && gp.buttons[9].pressed && !prevButtons[gi].start) {

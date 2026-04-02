@@ -48,6 +48,7 @@ function update(dt) {
     if (roundEndTimer <= 0) {
       if (scores[0] >= 3 || scores[1] >= 3) {
         gameState = STATE.MATCH_END;
+        matchEndTimer = 2; // 2 second delay before accepting input
         stopMusic();
         playMatchWin();
       } else {
@@ -58,6 +59,7 @@ function update(dt) {
   }
 
   if (gameState === STATE.MATCH_END) {
+    if (matchEndTimer > 0) { matchEndTimer -= dt; for (const k in keys) keys[k] = false; return; }
     if (Object.values(keys).some(v => v)) {
       scores = [0, 0];
       roundNum = 0;
@@ -71,17 +73,52 @@ function update(dt) {
     return;
   }
 
-  // Escape exits to character select from any gameplay state
-  if (keys['Escape'] && (gameState === STATE.PLAYING || gameState === STATE.PAUSED || gameState === STATE.COUNTDOWN || gameState === STATE.ROUND_END)) {
+  // Escape → pause menu
+  if (keys['Escape'] && (gameState === STATE.PLAYING || gameState === STATE.COUNTDOWN || gameState === STATE.ROUND_END)) {
     keys['Escape'] = false;
-    scores = [0, 0];
-    roundNum = 0;
-    gameState = STATE.CHAR_SELECT;
-    charSelect[0].ready = false;
-    charSelect[1].ready = false;
-    stopMusic();
-    startCharSelectMusic();
+    gameState = STATE.PAUSED;
+    pauseSelection = 0;
     for (const k in keys) keys[k] = false;
+    return;
+  }
+
+  // Pause menu input
+  if (gameState === STATE.PAUSED) {
+    if (keys['Escape']) {
+      // Escape again = resume
+      keys['Escape'] = false;
+      gameState = STATE.PLAYING;
+      for (const k in keys) keys[k] = false;
+      return;
+    }
+    // Navigate with any player's up/down
+    if (keys['KeyW'] || keys['ArrowUp'] || keys['_gp0Up'] || keys['_gp1Up']) {
+      pauseSelection = 0;
+      keys['KeyW'] = false; keys['ArrowUp'] = false; keys['_gp0Up'] = false; keys['_gp1Up'] = false;
+    }
+    if (keys['KeyS'] || keys['ArrowDown'] || keys['_gp0Down'] || keys['_gp1Down']) {
+      pauseSelection = 1;
+      keys['KeyS'] = false; keys['ArrowDown'] = false; keys['_gp0Down'] = false; keys['_gp1Down'] = false;
+    }
+    // Confirm with Space/Enter/A button
+    if (keys['Space'] || keys['Enter']) {
+      keys['Space'] = false; keys['Enter'] = false;
+      if (pauseSelection === 0) {
+        // Resume
+        gameState = STATE.PLAYING;
+      } else {
+        // Exit to character select
+        scores = [0, 0];
+        roundNum = 0;
+        gameState = STATE.CHAR_SELECT;
+        charSelect[0].ready = false;
+        charSelect[1].ready = false;
+        stopMusic();
+        startCharSelectMusic();
+      }
+      for (const k in keys) keys[k] = false;
+      return;
+    }
     return;
   }
 

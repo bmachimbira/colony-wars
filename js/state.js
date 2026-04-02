@@ -141,6 +141,8 @@ let roundTimer = 0;
 let countdownTimer = 0;
 let roundEndTimer = 0;
 let roundWinner = -1;
+let matchEndTimer = 0;
+let pauseSelection = 0; // 0 = RESUME, 1 = EXIT
 let moundTimer = 0;
 let powerUpTimer = 0;
 let waveTimer = 0;
