@@ -511,20 +511,25 @@ function draw() {
     ctx.fillText('ROUND ' + roundNum, W / 2, H / 2 - 50);
   }
 
-  // Round end overlay
+  // Round end overlay — focus on WINNER
   if (gameState === STATE.ROUND_END) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, W, H);
     const winCol = queens[roundWinner] ? queens[roundWinner].color : '#fff';
-    const loserIdx = 1 - roundWinner;
-    const loserName = queens[loserIdx] ? queens[loserIdx].charType : 'ENEMY';
+    const winnerName = queens[roundWinner] ? queens[roundWinner].charType : 'CHAMPION';
+    // Winner announcement with glow
+    ctx.save();
+    ctx.shadowColor = winCol;
+    ctx.shadowBlur = 20;
     ctx.fillStyle = winCol;
-    ctx.font = 'bold 28px monospace';
+    ctx.font = 'bold 32px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('P' + (loserIdx + 1) + ' ' + loserName + ' FALLS', W / 2, H / 2 - 20);
-    ctx.fillStyle = '#fff';
+    ctx.fillText('P' + (roundWinner + 1) + ' ' + winnerName, W / 2, H / 2 - 20);
+    ctx.restore();
+    ctx.fillStyle = winCol;
     ctx.font = 'bold 22px monospace';
-    ctx.fillText('P' + (roundWinner + 1) + ' WINS THE ROUND', W / 2, H / 2 + 20);
+    ctx.fillText('WINS THE ROUND', W / 2, H / 2 + 20);
+    ctx.fillStyle = '#ccc';
     ctx.font = '16px monospace';
     ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H / 2 + 55);
   }
@@ -1650,20 +1655,23 @@ function drawMatchEnd() {
 
   const winner = scores[0] >= 3 ? 0 : 1;
   const col = (queens.length > winner && queens[winner]) ? queens[winner].color : (winner === 0 ? CHAR_COLORS[charSelect[0].colorIdx] : CHAR_COLORS[charSelect[1].colorIdx]);
+  const winType = (queens.length > winner && queens[winner]) ? queens[winner].charType : CHAR_TYPES[charSelect[winner].charType];
 
-  // Glow title
+  // Glow title — winner announcement
   ctx.save();
   ctx.shadowColor = col;
-  ctx.shadowBlur = 25;
+  ctx.shadowBlur = 30;
   ctx.fillStyle = col;
-  ctx.font = 'bold 36px monospace';
+  ctx.font = 'bold 42px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('P' + (winner + 1) + ' WINS!', W / 2, H / 2 - 30);
+  ctx.fillText('P' + (winner + 1) + ' ' + winType, W / 2, H / 2 - 40);
+  ctx.font = 'bold 28px monospace';
+  ctx.fillText('WINS THE MATCH!', W / 2, H / 2 + 5);
   ctx.restore();
 
-  ctx.fillStyle = '#ccc';
-  ctx.font = '22px monospace';
-  ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H / 2 + 20);
+  ctx.fillStyle = col;
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText(scores[0] + ' - ' + scores[1], W / 2, H / 2 + 45);
 
   const blink = Math.sin(performance.now() / 500) > 0;
   if (blink) {

@@ -21,6 +21,8 @@ const STICK_DEADZONE = 0.3;
 
 // Track previous button states to detect fresh presses
 const prevButtons = [{}, {}];
+// Track previous direction states for edge detection in menus
+const prevDirs = [{ up: false, down: false, left: false, right: false }, { up: false, down: false, left: false, right: false }];
 
 function pollGamepads() {
   const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -46,12 +48,27 @@ function pollGamepads() {
     const stickRight = lx > STICK_DEADZONE;
 
     // ── Combine d-pad + stick ──
-    keys[map.up] = dpadUp || stickUp || (keys[map.up] && !isGamepadKey(map.up));
-    keys[map.down] = dpadDown || stickDown || (keys[map.down] && !isGamepadKey(map.down));
-    keys[map.left] = dpadLeft || stickLeft || (keys[map.left] && !isGamepadKey(map.left));
-    keys[map.right] = dpadRight || stickRight || (keys[map.right] && !isGamepadKey(map.right));
+    const dirUp = dpadUp || stickUp;
+    const dirDown = dpadDown || stickDown;
+    const dirLeft = dpadLeft || stickLeft;
+    const dirRight = dpadRight || stickRight;
 
-    // ── Shoot: A (0), B (1), X (2), Y (3), RB (5), RT (7) ──
+    keys[map.up] = dirUp || (keys[map.up] && !isGamepadKey(map.up));
+    keys[map.down] = dirDown || (keys[map.down] && !isGamepadKey(map.down));
+    keys[map.left] = dirLeft || (keys[map.left] && !isGamepadKey(map.left));
+    keys[map.right] = dirRight || (keys[map.right] && !isGamepadKey(map.right));
+
+    // ── Edge-detected menu keys (only fire on fresh press, for char select) ──
+    if (dirUp && !prevDirs[gi].up) keys['_gp' + gi + 'Up'] = true;
+    if (dirDown && !prevDirs[gi].down) keys['_gp' + gi + 'Down'] = true;
+    if (dirLeft && !prevDirs[gi].left) keys['_gp' + gi + 'Left'] = true;
+    if (dirRight && !prevDirs[gi].right) keys['_gp' + gi + 'Right'] = true;
+    prevDirs[gi].up = dirUp;
+    prevDirs[gi].down = dirDown;
+    prevDirs[gi].left = dirLeft;
+    prevDirs[gi].right = dirRight;
+
+    // ── Shoot: A (0), RB (5), RT (7) ──
     const shootPressed = (gp.buttons[0] && gp.buttons[0].pressed) ||
                          (gp.buttons[5] && gp.buttons[5].pressed) ||
                          (gp.buttons[7] && gp.buttons[7].pressed);
