@@ -212,6 +212,8 @@ function updateQueen(q, dt) {
       m.soldiersRemaining = 3;
       m.spawnTimer = 0.5;
       playMoundClaim();
+      spawnFloatingText(q.x, q.y, 'MOUND CLAIMED!', '#E8C840');
+      announce('Mound claimed!');
     }
   }
 
@@ -453,6 +455,8 @@ function updateMound(dt) {
     if (attempts < 100) {
       mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
       playMoundAppear();
+      spawnFloatingText(mx, my, 'SPAWN MOUND!', '#E8C840');
+      announce('Spawn mound appeared!');
     }
     moundTimer = 1 + gameRandom() * 1;
   }
@@ -536,7 +540,8 @@ function updateWorms(dt) {
       if (w.x === qx && w.y === qy && canWalk(qx, qy)) {
         q.hp++;
         spawnParticles(w.x, w.y, '#D4856A', 8);
-        spawnFloatingText(q.x, q.y, '+1 HP', '#44FF44');
+        spawnFloatingText(q.x, q.y, 'WORM +1 HP', '#D4856A');
+        announce('Worm devoured!');
         worms.splice(i, 1);
       }
     }
