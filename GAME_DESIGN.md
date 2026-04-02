@@ -20,11 +20,10 @@ Colony Clash is a local multiplayer battle arena set underground in a network of
 
 1. **You ARE the queen.** Every move is high-stakes because you're both the commander and the target. No respawns, no extra lives — one queen, one chance per round.
 
-2. **Spawn mounds as objectives.** Glowing mounds appear randomly on the map throughout the round. Reach one to activate it and spawn 3–4 allied soldier ants. But you have to physically go there with your queen — risking everything for a tactical advantage.
+2. **Spawn mounds as objectives.** Glowing mounds appear randomly on the map throughout the round. Reach one to activate 1 allied soldier ant. But you have to physically go there with your queen — risking everything for a tactical advantage.
 
-3. **Destructible terrain creates new paths.** Shooting dirt walls doesn't just remove obstacles — it carves new tunnels. The map evolves as you play. Early game is tight corridors; late game is wide-open chaos.
+3. **Destructible terrain creates new paths.** Shooting dirt walls doesn't just remove obstacles — it carves new tunnels. The map evolves as you play. Early game is tight corridors; late game is wide-open chaos. The whole map is filled with some terrain so you have to build tunnels to move. No empty space by default.
 
-4. **AI waves as chaos factor.** Termite raids eat through walls. Rival swarms hunt queens. Every wave reshapes the battlefield and forces adaptation.
 
 ---
 
@@ -61,7 +60,6 @@ Queens are drawn as larger ants with a distinct crown/mandible shape and a subtl
 - **Queen glow:** Subtle ambient glow in colony color around the queen at all times (identifies the queen clearly)
 - **Queen crown:** Visual differentiator — larger mandibles or a small crown shape on the head segment
 - **Ant bob:** 1–2px vertical oscillation on a 0.6s cycle while moving
-- **Pheromone trail:** Fading colony-colored dots behind queen (opacity decays over 3s)
 - **Dirt destruction:** Small particle burst (brown specks flying outward)
 - **Spawn mound pulse:** Gold glow pulsing when unclaimed, shifts to colony color when claimed
 - **Soldier spawn:** Soldiers "emerge" from the mound with a small dig-up animation
@@ -83,8 +81,7 @@ Each round generates a fresh map on a tile grid of approximately **28×22 tiles*
 | **Rock** | `ROCK` | Indestructible | Grey blocks with pebble highlights, heavier border |
 | **Puddle** | `PUDDLE` | Impassable (blocks ants + projectiles) | Blue with wavy surface highlight lines |
 | **Leaf Litter** | `LEAF` | Passable, hides ant underneath | Scattered green leaf shapes, semi-transparent |
-| **Tunnel** | `TUNNEL` | Open ground (default empty space) | Dark earth background `#2A1E10` |
-| **Dug Out** | `DUG` | Created when dirt is destroyed | Slightly lighter than tunnel `#332810` |
+| **Dug Out / Tunnel** | `DUG` | Created when dirt is destroyed | Slightly lighter than tunnel `#332810` |
 
 **Stretch tiles (cut if time tight):**
 
@@ -142,13 +139,11 @@ Spawn mounds are the signature mechanic that makes Colony Clash unique. They cre
 
 | Property | Value |
 |---|---|
-| First mound appears | 15 seconds into round |
-| New mound appears | Every 20–25 seconds (randomized) |
+| First mound appears | 5 seconds into round |
+| New mound appears | Every 5-10 seconds (randomized) |
 | Active mounds at once | 1 (next one spawns after current is claimed or expires) |
-| Unclaimed duration | 12 seconds before it disappears |
+| Unclaimed duration | 10 seconds before it disappears |
 | Claim method | Queen walks onto the mound tile |
-| Soldiers produced | 3–4 (randomized) |
-| Soldier spawn rate | 1 every 2.5 seconds after claiming |
 | Soldier lifetime | 20 seconds from spawn |
 | Mound placement | Random empty tunnel tile, minimum 5 tiles from either queen |
 
@@ -217,43 +212,6 @@ When a queen dies:
 
 ---
 
-## 7. AI Waves
-
-AI waves are the chaos factor. They disrupt entrenched positions, reshape the map, and force queens out of hiding. Every wave spawns 2–4 AI creatures from random tunnel edges.
-
-### Wave Schedule
-
-| Event | Time |
-|---|---|
-| First wave | 30 seconds |
-| Subsequent waves | Every 20 seconds |
-| Escalation | +1 creature per wave after wave 3 |
-
-### Wave Types
-
-| Wave | Creature | Color | Count | HP | Behaviour |
-|---|---|---|---|---|---|
-| **Termite Raid** | Termites | Orange `#C87830` | 3–4 | 1 | Wander randomly, **eat dirt walls** — creating chaos paths. Don't attack ants. |
-| **Rival Swarm** | Worker ants | Grey `#888888` | 3–4 | 1 | Aggressive, **target nearest queen**. Fast but fragile. |
-| **Beetle Rampage** | Beetles | Purple `#6830A0` | 2–3 | 2 | Wander randomly, shoot in random directions. Slow but tanky. |
-| **Centipede** | Centipede | Yellow-green `#A0B830` | 1 | 3 | Single long creature that snakes through tunnels, blocks paths, shoots sideways. |
-
-### Wave Mechanics
-
-- **Announcement:** 3-second warning banner: `~ TERMITE RAID APPROACHING ~`
-- **Spawn:** From random tunnel tiles at map edges, never inside queen chambers
-- **Timeout:** AI creatures self-destruct after 15 seconds (small poof animation)
-- **No score value:** Killing AI gives no advantage — only removes threats
-- **Wave type:** Random selection, weighted toward termites (40%) and rival swarms (30%)
-
-### Design Intent by Wave Type
-
-- **Termites** are the most interesting — they reshape the map. They might open a flank you were hiding behind, or create a shortcut to the enemy queen. Map control is temporary.
-- **Rival swarms** force movement. If you're camping, 3–4 ants hunting you will flush you out.
-- **Beetles** are obstacles. Tanky, random, and disruptive — they block corridors and spray projectiles unpredictably.
-- **Centipede** is a stretch goal — physically blocks tunnels like a moving wall.
-
----
 
 ## 8. Power-Ups
 
@@ -568,15 +526,6 @@ Each phase builds on the previous and results in a playable state.
 
 **Playable checkpoint:** Spawn mounds appear, queens can claim them, allied soldiers fight for the claiming colony. This is where the game gets INTERESTING.
 
-### Phase 5: AI Waves (30 min)
-**Goal:** Timed chaos waves that disrupt the battlefield.
-
-- [ ] Wave manager — countdown timer, announcement banner
-- [ ] Termite AI (random walk + eat dirt)
-- [ ] Rival swarm AI (pathfind toward nearest queen)
-- [ ] AI self-destruct timer (15s)
-- [ ] Wave escalation (+1 creature after wave 3)
-- [ ] Wave type random selection
 
 **Playable checkpoint:** AI waves create chaos, termites reshape the map, swarms hunt queens.
 
@@ -609,9 +558,7 @@ Each phase builds on the previous and results in a playable state.
 In priority order — **cut from the bottom first:**
 
 1. **Phase 7 polish** — game plays fine without particles and bob
-2. **Beetle and centipede wave types** — just termites + rival swarms is enough
 3. **Leaf litter tiles** — visual-only hiding is low-value
-4. **Wave escalation** — flat wave count works fine
 5. **Mega Acid power-up** — 3×3 blast is flashy but not essential
 6. **Chitin Shield power-up** — just do Sugar Rush + Rapid Bite
 
@@ -624,7 +571,6 @@ These features MUST ship for the game to work:
 - Sudden death (queen dies → round over)
 - Procedurally generated maps
 - Spawn mounds with allied soldiers (the signature mechanic)
-- At least one AI wave type (termites — they reshape the map)
 - At least one power-up type (Sugar Rush — simplest to implement)
 - Match scoring (best of 5)
 
