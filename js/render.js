@@ -1481,31 +1481,30 @@ function drawTitle() {
   ctx.font = '14px monospace';
   ctx.fillText('The colony sent its best warrior', W / 2, H / 2 + 15);
 
-  const blink = Math.sin(now / 500) > 0;
-  if (blink) {
-    ctx.fillStyle = '#ccc';
-    ctx.font = '14px monospace';
-    ctx.fillText('PRESS ANY KEY TO START', W / 2, H / 2 + 60);
-  }
-
-  ctx.fillStyle = CHAR_COLORS[0];
-  ctx.font = '12px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('P1: WASD + SPACE', W / 2 - 150, H / 2 + 110);
-  ctx.fillStyle = CHAR_COLORS[1];
-  ctx.textAlign = 'right';
-  ctx.fillText('P2: ARROWS + ENTER', W / 2 + 150, H / 2 + 110);
-
-  ctx.fillStyle = '#666';
-  ctx.font = '11px monospace';
+  // Mode selection
+  ctx.font = 'bold 20px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 135);
+
+  const blink = Math.sin(now / 500) > 0;
+  ctx.fillStyle = blink ? '#FFD700' : '#AA8800';
+  ctx.fillText('[1]  SINGLE PLAYER  vs AI', W / 2, H / 2 + 55);
+
+  ctx.fillStyle = blink ? '#ccc' : '#888';
+  ctx.fillText('[2]  LOCAL MULTIPLAYER', W / 2, H / 2 + 85);
+
+  ctx.fillStyle = '#555';
+  ctx.font = '12px monospace';
+  ctx.fillText('P1: WASD + SPACE   |   P2: ARROWS + ENTER', W / 2, H / 2 + 115);
+
+  ctx.fillStyle = '#444';
+  ctx.font = '11px monospace';
+  ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 140);
 
   // Online multiplayer button hint
   const blink2 = Math.sin(performance.now() / 600) > 0;
   ctx.fillStyle = blink2 ? '#30A830' : '#1A6418';
   ctx.font = 'bold 13px monospace';
-  ctx.fillText('Press [O] for ONLINE MULTIPLAYER', W / 2, H / 2 + 165);
+  ctx.fillText('Press [O] for ONLINE MULTIPLAYER', W / 2, H / 2 + 170);
   drawOnlineButton();
 }
 
@@ -1530,6 +1529,7 @@ function drawCharSelect() {
     const sel = charSelect[p];
     const cx = p === 0 ? W * 0.25 : W * 0.75;
     const top = 90;
+    const isAI = singlePlayer && p === 1;
 
     // Panel background
     ctx.fillStyle = sel.ready ? 'rgba(50,120,50,0.3)' : 'rgba(255,255,255,0.05)';
@@ -1542,7 +1542,7 @@ function drawCharSelect() {
     ctx.fillStyle = CHAR_COLORS[sel.colorIdx];
     ctx.font = 'bold 22px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('PLAYER ' + (p + 1), cx, top + 35);
+    ctx.fillText(isAI ? 'AI OPPONENT' : 'PLAYER ' + (p + 1), cx, top + 35);
 
     // Character name
     const charName = CHAR_TYPES[sel.charType];

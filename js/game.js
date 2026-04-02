@@ -11,7 +11,20 @@ function update(dt) {
       showMultiplayerMenu();
       return;
     }
-    if (Object.values(keys).some(v => v)) {
+    if (keys['Digit1']) {
+      // Single player vs AI
+      singlePlayer = true;
+      playerCount = 2;
+      gameState = STATE.CHAR_SELECT;
+      charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
+      charSelect[1] = { charType: Math.floor(Math.random() * 3), colorIdx: 1 + Math.floor(Math.random() * 7), ready: true };
+      for (const k in keys) keys[k] = false;
+      startCharSelectMusic();
+      return;
+    }
+    if (keys['Digit2'] || Object.values(keys).some(v => v)) {
+      singlePlayer = false;
+      playerCount = 2;
       gameState = STATE.CHAR_SELECT;
       charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
       charSelect[1] = { charType: 0, colorIdx: 1, ready: false };
@@ -102,6 +115,9 @@ function update(dt) {
     if (d.y < 0) d.y = H;
     if (d.y > H) d.y = 0;
   }
+
+  // Update AI
+  updateAI(dt);
 
   // Update queens
   for (const q of queens) {
@@ -339,6 +355,9 @@ function updateCharSelect() {
   if ((keys['ArrowLeft'] || keys['_gp1Left']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + CHAR_COLORS.length - 1) % CHAR_COLORS.length; keys['ArrowLeft'] = false; keys['_gp1Left'] = false; }
   if ((keys['ArrowRight'] || keys['_gp1Right']) && !charSelect[1].ready) { charSelect[1].colorIdx = (charSelect[1].colorIdx + 1) % CHAR_COLORS.length; keys['ArrowRight'] = false; keys['_gp1Right'] = false; }
   if (keys['Enter']) { charSelect[1].ready = !charSelect[1].ready; keys['Enter'] = false; }
+
+  // In single player, P2 is always ready (AI)
+  if (singlePlayer) charSelect[1].ready = true;
 
   // Both ready — start game
   if (charSelect[0].ready && charSelect[1].ready) {
