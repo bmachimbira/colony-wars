@@ -6,6 +6,11 @@ function update(dt) {
   }
 
   if (gameState === STATE.TITLE) {
+    if (keys['KeyO']) {
+      keys['KeyO'] = false;
+      showMultiplayerMenu();
+      return;
+    }
     if (Object.values(keys).some(v => v)) {
       gameState = STATE.CHAR_SELECT;
       charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
@@ -263,7 +268,9 @@ function gameLoop(time) {
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
     pollGamepads();
+    mpApplyRemoteInput();
     update(dt);
+    mpSendInput(dt);
     draw();
   } catch (e) {
     console.error('Game loop error:', e);

@@ -1059,6 +1059,13 @@ function drawTitle() {
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 135);
+
+  // Online multiplayer button hint
+  const blink2 = Math.sin(performance.now() / 600) > 0;
+  ctx.fillStyle = blink2 ? '#30A830' : '#1A6418';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('Press [O] for ONLINE MULTIPLAYER', W / 2, H / 2 + 165);
+  drawOnlineButton();
 }
 
 function drawCharSelect() {
