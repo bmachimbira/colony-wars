@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m http.server*)",
+      "Bash(open http://localhost:8080*)"
+    ]
+  }
+}
