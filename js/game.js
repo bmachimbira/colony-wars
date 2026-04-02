@@ -413,33 +413,17 @@ function updateMutators(dt) {
           }
         }
       }
-      // Damage queens caught in the cave-in ring and push inward
+      // Queens caught in cave-in: instant kill if on unwalkable tile or trapped
       for (const q of queens) {
         if (q.dead) continue;
         const qx = Math.round(q.x), qy = Math.round(q.y);
-        const inRing = qx < caveinRing || qx >= COLS - caveinRing || qy < caveinRing || qy >= ROWS - caveinRing;
-        if (inRing) {
-          // Push queen inward
-          if (qx < caveinRing) q.x = caveinRing;
-          if (qx >= COLS - caveinRing) q.x = COLS - caveinRing - 1;
-          if (qy < caveinRing) q.y = caveinRing;
-          if (qy >= ROWS - caveinRing) q.y = ROWS - caveinRing - 1;
-          if (q.invTimer <= 0) {
-            q.hp--;
-            q.invTimer = 0.5;
-            screenShake = 8;
-            spawnParticles(qx, qy, q.color, 12);
-            spawnFloatingText(q.x, q.y, 'CRUSHED!', '#8A6A4A');
-            playHit();
-          }
-        }
-        // Check if queen is trapped (all 4 neighbors are unwalkable) — instant kill
-        const cx = Math.round(q.x), cy = Math.round(q.y);
-        if (!canWalk(cx, cy) || (!canWalk(cx-1,cy) && !canWalk(cx+1,cy) && !canWalk(cx,cy-1) && !canWalk(cx,cy+1))) {
+        const onRock = !canWalk(qx, qy);
+        const trapped = !canWalk(qx-1,qy) && !canWalk(qx+1,qy) && !canWalk(qx,qy-1) && !canWalk(qx,qy+1);
+        if (onRock || trapped) {
           q.hp = 0;
           screenShake = 10;
-          spawnParticles(cx, cy, q.color, 20);
-          spawnFloatingText(q.x, q.y, 'TRAPPED!', '#CC4444');
+          spawnParticles(qx, qy, q.color, 20);
+          spawnFloatingText(q.x, q.y, 'CRUSHED!', '#CC4444');
           playDeath();
         }
       }
