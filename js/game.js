@@ -16,6 +16,7 @@ function update(dt) {
       charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
       charSelect[1] = { charType: 0, colorIdx: 1, ready: false };
       for (const k in keys) keys[k] = false;
+      startCharSelectMusic();
     }
     return;
   }
@@ -63,6 +64,7 @@ function update(dt) {
       gameState = STATE.CHAR_SELECT;
       charSelect[0].ready = false;
       charSelect[1].ready = false;
+      startCharSelectMusic();
       // Clear all keys to prevent immediate restart
       for (const k in keys) keys[k] = false;
     }
@@ -78,6 +80,7 @@ function update(dt) {
     charSelect[0].ready = false;
     charSelect[1].ready = false;
     stopMusic();
+    startCharSelectMusic();
     for (const k in keys) keys[k] = false;
     return;
   }
@@ -339,6 +342,7 @@ function updateCharSelect() {
 
   // Both ready — start game
   if (charSelect[0].ready && charSelect[1].ready) {
+    stopCharSelectMusic();
     gameState = STATE.GENERATING;
   }
 }

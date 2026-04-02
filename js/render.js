@@ -1610,74 +1610,281 @@ function drawCharSelect() {
 }
 
 function drawCharacterPreview(charType, color, scale) {
-  const s = TILE * 0.45 * scale;
-  ctx.fillStyle = color;
+  const s = TILE * 0.55 * scale;
+  const [cr, cg, cb] = rgb(color);
+  const t = performance.now() / 1000;
+
+  // Pixel art grid helper — draws a filled "pixel" at grid position
+  const P = s * 0.08; // pixel size
+  const px = (gx, gy) => { ctx.fillRect(gx * P - P/2, gy * P - P/2, P, P); };
+
+  // Color helpers
+  const base = shade(cr, cg, cb, 1.0);
+  const light = shade(cr, cg, cb, 1.4);
+  const dark = shade(cr, cg, cb, 0.6);
+  const darker = shade(cr, cg, cb, 0.35);
+
+  // Floating animation
+  const float = Math.sin(t * 2) * 3;
+  ctx.save();
+  ctx.translate(0, float);
+
+  // Drop shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.05, s * 0.7, s * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   if (charType === 'ANT') {
-    // Standard ant body
-    ctx.beginPath(); ctx.ellipse(-s * 0.85, 0, s * 0.55, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-s * 0.25, 0, s * 0.12, s * 0.15, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(s * 0.1, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(s * 0.65, 0, s * 0.3, s * 0.28, 0, 0, Math.PI * 2); ctx.fill();
-    // Eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(s * 0.75, -s * 0.12, s * 0.08, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(s * 0.75, s * 0.12, s * 0.08, 0, Math.PI * 2); ctx.fill();
-    // Antennae
-    ctx.strokeStyle = color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(s * 0.85, -s * 0.2); ctx.quadraticCurveTo(s * 1.1, -s * 0.6, s * 1.4, -s * 0.75); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s * 0.85, s * 0.2); ctx.quadraticCurveTo(s * 1.1, s * 0.6, s * 1.4, s * 0.75); ctx.stroke();
-  } else if (charType === 'BEETLE') {
-    // Beetle: wider, rounder, with wing case
-    ctx.beginPath(); ctx.ellipse(-s * 0.5, 0, s * 0.7, s * 0.55, 0, 0, Math.PI * 2); ctx.fill();
-    // Wing line
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-s * 1.0, 0); ctx.lineTo(s * 0.1, 0); ctx.stroke();
+    // ── ANT: Detailed top-down with 3D shaded segments ──
+
+    // 6 legs — 3 per side, jointed, spread wide
+    ctx.lineCap = 'round';
+    for (let side = -1; side <= 1; side += 2) {
+      const legData = [
+        { hx: -s*0.5, reach: s*0.6, angle: -0.6 },
+        { hx: -s*0.1, reach: s*0.7, angle: -0.1 },
+        { hx: s*0.25, reach: s*0.55, angle: 0.4 },
+      ];
+      for (const leg of legData) {
+        const ky = side * leg.reach * 0.55;
+        const kx = leg.hx + Math.sin(leg.angle) * leg.reach * 0.3;
+        const fy = side * leg.reach;
+        const fx = kx + Math.sin(leg.angle) * leg.reach * 0.2;
+        // Shadow
+        ctx.strokeStyle = darker; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side * s * 0.15); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        // Leg
+        ctx.strokeStyle = dark; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side * s * 0.15); ctx.lineTo(kx, ky); ctx.stroke();
+        ctx.strokeStyle = base; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        // Knee
+        ctx.fillStyle = dark;
+        ctx.beginPath(); ctx.arc(kx, ky, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // Abdomen (gaster)
+    draw3DSegment(-s * 0.55, 0, s * 0.38, s * 0.32, cr, cg, cb);
+    // Abdomen stripes
+    ctx.strokeStyle = darker; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-s*0.55, -s*0.28); ctx.lineTo(-s*0.55, s*0.28); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s*0.42, -s*0.3); ctx.lineTo(-s*0.42, s*0.3); ctx.stroke();
+    // Stinger
+    ctx.fillStyle = darker;
+    ctx.beginPath(); ctx.moveTo(-s*0.92, 0); ctx.lineTo(-s*0.82, -s*0.05); ctx.lineTo(-s*0.82, s*0.05); ctx.closePath(); ctx.fill();
+
+    // Petiole (2 tiny nodes)
+    draw3DSegment(-s * 0.18, 0, s * 0.06, s * 0.06, cr, cg, cb);
+    draw3DSegment(-s * 0.1, 0, s * 0.05, s * 0.05, cr, cg, cb);
+
+    // Thorax
+    draw3DSegment(s * 0.08, 0, s * 0.22, s * 0.18, cr, cg, cb);
+
     // Head
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.ellipse(s * 0.5, 0, s * 0.3, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
-    // Horn
-    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(s * 0.7, 0); ctx.quadraticCurveTo(s * 1.1, -s * 0.5, s * 1.3, -s * 0.3); ctx.stroke();
-    // Eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(s * 0.6, -s * 0.15, s * 0.08, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(s * 0.6, s * 0.15, s * 0.08, 0, Math.PI * 2); ctx.fill();
-    // Legs
-    ctx.strokeStyle = color; ctx.lineWidth = 2;
-    for (let i = -1; i <= 1; i++) {
-      ctx.beginPath(); ctx.moveTo(i * s * 0.3, -s * 0.5); ctx.lineTo(i * s * 0.3 - s * 0.15, -s * 0.9); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(i * s * 0.3, s * 0.5); ctx.lineTo(i * s * 0.3 - s * 0.15, s * 0.9); ctx.stroke();
+    draw3DSegment(s * 0.4, 0, s * 0.18, s * 0.18, cr, cg, cb);
+
+    // Compound eyes (3D)
+    const eg1 = ctx.createRadialGradient(s*0.44, -s*0.12, 0, s*0.46, -s*0.11, s*0.06);
+    eg1.addColorStop(0, '#fff'); eg1.addColorStop(0.5, '#ddd'); eg1.addColorStop(1, '#666');
+    ctx.fillStyle = eg1;
+    ctx.beginPath(); ctx.ellipse(s*0.46, -s*0.11, s*0.055, s*0.065, 0.4, 0, Math.PI*2); ctx.fill();
+    const eg2 = ctx.createRadialGradient(s*0.44, s*0.12, 0, s*0.46, s*0.11, s*0.06);
+    eg2.addColorStop(0, '#fff'); eg2.addColorStop(0.5, '#ddd'); eg2.addColorStop(1, '#666');
+    ctx.fillStyle = eg2;
+    ctx.beginPath(); ctx.ellipse(s*0.46, s*0.11, s*0.055, s*0.065, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(s*0.48, -s*0.11, s*0.03, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.48, s*0.11, s*0.03, 0, Math.PI*2); ctx.fill();
+
+    // Mandibles
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    const mo = Math.sin(t * 2.5) * 0.04 + 0.12;
+    ctx.beginPath(); ctx.moveTo(s*0.55, -s*0.06); ctx.quadraticCurveTo(s*0.65, -s*mo, s*0.72, -s*0.02); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.55, s*0.06); ctx.quadraticCurveTo(s*0.65, s*mo, s*0.72, s*0.02); ctx.stroke();
+
+    // Elbowed antennae
+    ctx.strokeStyle = base; ctx.lineWidth = 2;
+    const a1 = Math.sin(t * 3) * 0.06;
+    ctx.beginPath(); ctx.moveTo(s*0.52, -s*0.14); ctx.lineTo(s*0.62, -s*0.28);
+    ctx.quadraticCurveTo(s*0.72, -s*(0.42+a1), s*0.85, -s*(0.48+a1)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.52, s*0.14); ctx.lineTo(s*0.62, s*0.28);
+    ctx.quadraticCurveTo(s*0.72, s*(0.42-a1), s*0.85, s*(0.48-a1)); ctx.stroke();
+
+  } else if (charType === 'BEETLE') {
+    // ── BEETLE: Armored tank, massive elytra, horn ──
+
+    // 6 thick legs
+    ctx.lineCap = 'round';
+    for (let side = -1; side <= 1; side += 2) {
+      const legData = [
+        { hx: -s*0.35, reach: s*0.55, angle: -0.5 },
+        { hx: 0, reach: s*0.6, angle: 0 },
+        { hx: s*0.25, reach: s*0.5, angle: 0.5 },
+      ];
+      for (const leg of legData) {
+        const ky = side * leg.reach * 0.5;
+        const kx = leg.hx + Math.sin(leg.angle) * leg.reach * 0.25;
+        const fy = side * leg.reach;
+        const fx = kx + Math.sin(leg.angle) * leg.reach * 0.2;
+        ctx.strokeStyle = darker; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side*s*0.22); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.strokeStyle = dark; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side*s*0.22); ctx.lineTo(kx, ky); ctx.stroke();
+        ctx.strokeStyle = base; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.fillStyle = dark;
+        ctx.beginPath(); ctx.arc(kx, ky, 3, 0, Math.PI*2); ctx.fill();
+      }
     }
+
+    // Elytra (wing cases) — large 3D dome
+    draw3DSegment(-s*0.25, 0, s*0.55, s*0.4, cr, cg, cb);
+    // Wing split line
+    ctx.strokeStyle = darker; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-s*0.75, 0); ctx.lineTo(s*0.15, 0); ctx.stroke();
+    // Elytra highlight stripe
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-s*0.7, -1); ctx.lineTo(s*0.12, -1); ctx.stroke();
+    // Vein grooves
+    ctx.strokeStyle = shade(cr,cg,cb,0.5); ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-s*0.6, -s*0.1); ctx.quadraticCurveTo(-s*0.3, -s*0.25, -s*0.05, -s*0.1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s*0.6, s*0.1); ctx.quadraticCurveTo(-s*0.3, s*0.25, -s*0.05, s*0.1); ctx.stroke();
+
+    // Pronotum
+    draw3DSegment(s*0.2, 0, s*0.22, s*0.28, cr, cg, cb);
+
+    // Head
+    draw3DSegment(s*0.48, 0, s*0.16, s*0.2, cr, cg, cb);
+
+    // Horn — thick curved rhinoceros horn
+    const hcr = cr > 180 ? 220 : cr + 40;
+    const hcg = cg > 180 ? 200 : cg + 20;
+    const hcb = cb > 180 ? 180 : cb;
+    ctx.strokeStyle = shade(hcr,hcg,hcb,0.5); ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(s*0.58, -s*0.04); ctx.bezierCurveTo(s*0.75, -s*0.1, s*0.88, -s*0.38, s*0.75, -s*0.55); ctx.stroke();
+    ctx.strokeStyle = shade(hcr,hcg,hcb,1.0); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(s*0.58, -s*0.04); ctx.bezierCurveTo(s*0.75, -s*0.1, s*0.88, -s*0.38, s*0.75, -s*0.55); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(s*0.6, -s*0.06); ctx.bezierCurveTo(s*0.73, -s*0.12, s*0.85, -s*0.35, s*0.73, -s*0.5); ctx.stroke();
+
+    // Eyes
+    const beg1 = ctx.createRadialGradient(s*0.52, -s*0.14, 0, s*0.54, -s*0.13, s*0.07);
+    beg1.addColorStop(0, '#fff'); beg1.addColorStop(0.4, '#eee'); beg1.addColorStop(1, '#555');
+    ctx.fillStyle = beg1;
+    ctx.beginPath(); ctx.ellipse(s*0.54, -s*0.13, s*0.06, s*0.075, 0.3, 0, Math.PI*2); ctx.fill();
+    const beg2 = ctx.createRadialGradient(s*0.52, s*0.14, 0, s*0.54, s*0.13, s*0.07);
+    beg2.addColorStop(0, '#fff'); beg2.addColorStop(0.4, '#eee'); beg2.addColorStop(1, '#555');
+    ctx.fillStyle = beg2;
+    ctx.beginPath(); ctx.ellipse(s*0.54, s*0.13, s*0.06, s*0.075, -0.3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(s*0.56, -s*0.13, s*0.03, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.56, s*0.13, s*0.03, 0, Math.PI*2); ctx.fill();
+
+    // Short clubbed antennae
+    ctx.strokeStyle = base; ctx.lineWidth = 2;
+    const ba = Math.sin(t * 2) * 0.04;
+    ctx.beginPath(); ctx.moveTo(s*0.56, -s*0.18); ctx.quadraticCurveTo(s*0.65, -s*(0.3+ba), s*0.72, -s*(0.32+ba)); ctx.stroke();
+    ctx.fillStyle = base; ctx.beginPath(); ctx.arc(s*0.72, -s*(0.32+ba), 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s*0.56, s*0.18); ctx.quadraticCurveTo(s*0.65, s*(0.3-ba), s*0.72, s*(0.32-ba)); ctx.stroke();
+    ctx.fillStyle = base; ctx.beginPath(); ctx.arc(s*0.72, s*(0.32-ba), 3, 0, Math.PI*2); ctx.fill();
+
+    // Mandibles
+    ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    const bmo = Math.sin(t * 2) * 0.04 + 0.14;
+    ctx.beginPath(); ctx.moveTo(s*0.6, -s*0.1); ctx.lineTo(s*0.75, -s*bmo); ctx.lineTo(s*0.78, -s*0.02); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.6, s*0.1); ctx.lineTo(s*0.75, s*bmo); ctx.lineTo(s*0.78, s*0.02); ctx.stroke();
+
   } else if (charType === 'COCKROACH') {
-    // Cockroach: long, flat, segmented
-    ctx.beginPath(); ctx.ellipse(-s * 0.7, 0, s * 0.45, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-s * 0.2, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(s * 0.25, 0, s * 0.3, s * 0.28, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(s * 0.6, 0, s * 0.25, s * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-    // Segment lines
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
-    for (let si = -3; si <= 1; si++) {
-      ctx.beginPath(); ctx.moveTo(si * s * 0.25, -s * 0.35); ctx.lineTo(si * s * 0.25, s * 0.35); ctx.stroke();
+    // ── COCKROACH: Flat, fast, long, 8 legs ──
+
+    // 8 spindly legs (4 per side)
+    ctx.lineCap = 'round';
+    for (let side = -1; side <= 1; side += 2) {
+      const legData = [
+        { hx: -s*0.55, reach: s*0.65, angle: -0.6 },
+        { hx: -s*0.25, reach: s*0.7, angle: -0.2 },
+        { hx: s*0.05, reach: s*0.65, angle: 0.2 },
+        { hx: s*0.28, reach: s*0.55, angle: 0.5 },
+      ];
+      for (const leg of legData) {
+        const ky = side * leg.reach * 0.45;
+        const kx = leg.hx + Math.sin(leg.angle) * leg.reach * 0.3;
+        const fy = side * leg.reach;
+        const fx = kx + Math.sin(leg.angle) * leg.reach * 0.25;
+        ctx.strokeStyle = darker; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side*s*0.12); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.strokeStyle = dark; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(leg.hx, side*s*0.12); ctx.lineTo(kx, ky); ctx.stroke();
+        ctx.strokeStyle = base; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+        // Tiny tarsus spines
+        ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx-2, fy+side*4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx+2, fy+side*4); ctx.stroke();
+      }
     }
-    // Long antennae
-    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(s * 0.8, -s * 0.15); ctx.quadraticCurveTo(s * 1.3, -s * 0.5, s * 1.8, -s * 0.6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s * 0.8, s * 0.15); ctx.quadraticCurveTo(s * 1.3, s * 0.5, s * 1.8, s * 0.6); ctx.stroke();
-    // Eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(s * 0.7, -s * 0.1, s * 0.06, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(s * 0.7, s * 0.1, s * 0.06, 0, Math.PI * 2); ctx.fill();
-    // Legs
-    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
-    for (let i = -2; i <= 1; i++) {
-      ctx.beginPath(); ctx.moveTo(i * s * 0.25, -s * 0.3); ctx.lineTo(i * s * 0.25 - s * 0.1, -s * 0.7); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(i * s * 0.25, s * 0.3); ctx.lineTo(i * s * 0.25 - s * 0.1, s * 0.7); ctx.stroke();
+
+    // Cerci (tail prongs)
+    const cs = Math.sin(t * 2) * 0.04;
+    ctx.strokeStyle = base; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-s*0.72, -s*0.06); ctx.quadraticCurveTo(-s*0.9, -s*(0.12+cs), -s*1.05, -s*(0.2+cs)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s*0.72, s*0.06); ctx.quadraticCurveTo(-s*0.9, s*(0.12-cs), -s*1.05, s*(0.2-cs)); ctx.stroke();
+
+    // Abdomen (flat, segmented)
+    draw3DSegment(-s*0.45, 0, s*0.35, s*0.25, cr, cg, cb);
+    // Tergite bands
+    ctx.strokeStyle = shade(cr,cg,cb,0.5); ctx.lineWidth = 0.8;
+    for (let si = -2; si <= 1; si++) {
+      const sx = -s*0.45 + si * s*0.1;
+      ctx.beginPath(); ctx.moveTo(sx, -s*0.22); ctx.lineTo(sx, s*0.22); ctx.stroke();
     }
-    // Cerci (tail appendages)
-    ctx.beginPath(); ctx.moveTo(-s * 1.1, -s * 0.15); ctx.lineTo(-s * 1.5, -s * 0.3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-s * 1.1, s * 0.15); ctx.lineTo(-s * 1.5, s * 0.3); ctx.stroke();
+
+    // Mid thorax
+    draw3DSegment(-s*0.08, 0, s*0.2, s*0.2, cr, cg, cb);
+
+    // Pronotum (huge shield — signature cockroach feature)
+    draw3DSegment(s*0.18, 0, s*0.28, s*0.3, cr, cg, cb);
+    // M-shape marking
+    ctx.strokeStyle = shade(cr,cg,cb,0.5); ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(s*0.02, -s*0.1);
+    ctx.quadraticCurveTo(s*0.14, -s*0.22, s*0.22, -s*0.1);
+    ctx.quadraticCurveTo(s*0.3, -s*0.22, s*0.38, -s*0.06);
+    ctx.stroke();
+
+    // Head (small, tucked)
+    draw3DSegment(s*0.45, 0, s*0.12, s*0.15, cr, cg, cb);
+
+    // Large compound eyes
+    const ceg1 = ctx.createRadialGradient(s*0.48, -s*0.1, 0, s*0.5, -s*0.1, s*0.06);
+    ceg1.addColorStop(0, '#fff'); ceg1.addColorStop(0.4, '#ddd'); ceg1.addColorStop(1, '#555');
+    ctx.fillStyle = ceg1;
+    ctx.beginPath(); ctx.ellipse(s*0.5, -s*0.1, s*0.055, s*0.06, 0.4, 0, Math.PI*2); ctx.fill();
+    const ceg2 = ctx.createRadialGradient(s*0.48, s*0.1, 0, s*0.5, s*0.1, s*0.06);
+    ceg2.addColorStop(0, '#fff'); ceg2.addColorStop(0.4, '#ddd'); ceg2.addColorStop(1, '#555');
+    ctx.fillStyle = ceg2;
+    ctx.beginPath(); ctx.ellipse(s*0.5, s*0.1, s*0.055, s*0.06, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#221111';
+    ctx.beginPath(); ctx.arc(s*0.52, -s*0.1, s*0.03, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.52, s*0.1, s*0.03, 0, Math.PI*2); ctx.fill();
+
+    // Very long whip antennae
+    ctx.strokeStyle = base; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    const ca = Math.sin(t * 4) * 0.06;
+    ctx.beginPath(); ctx.moveTo(s*0.54, -s*0.12);
+    ctx.bezierCurveTo(s*0.7, -s*(0.3+ca), s*0.9, -s*(0.25+ca), s*1.15, -s*(0.35+ca)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.54, s*0.12);
+    ctx.bezierCurveTo(s*0.7, s*(0.3-ca), s*0.9, s*(0.25-ca), s*1.15, s*(0.35-ca)); ctx.stroke();
+
+    // Small palps
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s*0.55, -s*0.04); ctx.lineTo(s*0.63, -s*0.08); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.55, s*0.04); ctx.lineTo(s*0.63, s*0.08); ctx.stroke();
   }
+
+  ctx.restore();
 }
 
 function drawMatchEnd() {

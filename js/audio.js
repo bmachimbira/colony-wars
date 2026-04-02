@@ -448,6 +448,140 @@ function playAnteaterDeath() {
   noise.start(t);
 }
 
+// ─── Character Select Music (Mortal Kombat style) ────────────
+let csMusic = false;
+let csNodes = [];
+let csIntervals = [];
+
+function startCharSelectMusic() {
+  if (csMusic) return;
+  csMusic = true;
+  const t = audioCtx.currentTime;
+
+  const csGain = audioCtx.createGain();
+  csGain.gain.setValueAtTime(0, t);
+  csGain.gain.linearRampToValueAtTime(0.25, t + 1);
+  csGain.connect(audioCtx.destination);
+
+  // Dark pad — minor chord (Am: A2, C3, E3) with detuned square waves
+  const padNotes = [110, 130.8, 164.8];
+  const padGain = audioCtx.createGain();
+  const padFilter = audioCtx.createBiquadFilter();
+  padGain.gain.value = 0.12;
+  padFilter.type = 'lowpass';
+  padFilter.frequency.value = 500;
+  padFilter.Q.value = 2;
+  for (const freq of padNotes) {
+    const osc = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    osc.type = 'square';
+    osc2.type = 'square';
+    osc.frequency.value = freq;
+    osc2.frequency.value = freq * 1.005;
+    osc.connect(padFilter);
+    osc2.connect(padFilter);
+    osc.start();
+    osc2.start();
+    csNodes.push(osc, osc2);
+  }
+  padFilter.connect(padGain);
+  padGain.connect(csGain);
+
+  // Heavy kick drum + hi-hat loop at ~140 BPM
+  const bpm = 140;
+  const beatMs = (60 / bpm) * 1000;
+  let beatCount = 0;
+
+  const drumLoop = setInterval(() => {
+    if (!csMusic) return;
+    const now = audioCtx.currentTime;
+
+    // Kick on every beat
+    const kick = audioCtx.createOscillator();
+    const kickGain = audioCtx.createGain();
+    kick.type = 'sine';
+    kick.frequency.setValueAtTime(120, now);
+    kick.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+    kickGain.gain.setValueAtTime(0.5, now);
+    kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    kick.connect(kickGain);
+    kickGain.connect(csGain);
+    kick.start(now);
+    kick.stop(now + 0.15);
+
+    // Kick noise layer
+    const kBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.05), audioCtx.sampleRate);
+    const kData = kBuf.getChannelData(0);
+    for (let i = 0; i < kData.length; i++) kData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / kData.length, 3);
+    const kNoise = audioCtx.createBufferSource();
+    kNoise.buffer = kBuf;
+    const kNGain = audioCtx.createGain();
+    const kFilter = audioCtx.createBiquadFilter();
+    kFilter.type = 'lowpass'; kFilter.frequency.value = 200;
+    kNGain.gain.setValueAtTime(0.3, now);
+    kNGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    kNoise.connect(kFilter);
+    kFilter.connect(kNGain);
+    kNGain.connect(csGain);
+    kNoise.start(now);
+
+    // Hi-hat on offbeats
+    if (beatCount % 2 === 1) {
+      const hBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.03), audioCtx.sampleRate);
+      const hData = hBuf.getChannelData(0);
+      for (let i = 0; i < hData.length; i++) hData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / hData.length, 4);
+      const hat = audioCtx.createBufferSource();
+      hat.buffer = hBuf;
+      const hatGain = audioCtx.createGain();
+      const hatFilter = audioCtx.createBiquadFilter();
+      hatFilter.type = 'highpass'; hatFilter.frequency.value = 6000;
+      hatGain.gain.setValueAtTime(0.2, now);
+      hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      hat.connect(hatFilter);
+      hatFilter.connect(hatGain);
+      hatGain.connect(csGain);
+      hat.start(now);
+    }
+
+    // Bass synth riff — every 4 beats play a note
+    if (beatCount % 4 === 0) {
+      const bassNotes = [55, 55, 65.4, 55]; // A1, A1, C2, A1
+      const bNote = bassNotes[Math.floor(beatCount / 4) % bassNotes.length];
+      const bass = audioCtx.createOscillator();
+      const bassGain = audioCtx.createGain();
+      const bassFilter = audioCtx.createBiquadFilter();
+      bass.type = 'sawtooth';
+      bass.frequency.value = bNote;
+      bassFilter.type = 'lowpass';
+      bassFilter.frequency.setValueAtTime(800, now);
+      bassFilter.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+      bassGain.gain.setValueAtTime(0.2, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      bass.connect(bassFilter);
+      bassFilter.connect(bassGain);
+      bassGain.connect(csGain);
+      bass.start(now);
+      bass.stop(now + 0.35);
+    }
+
+    beatCount++;
+  }, beatMs / 2); // 8th notes
+
+  csIntervals.push(drumLoop);
+  csNodes.push({ stop: () => { csGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5); } });
+}
+
+function stopCharSelectMusic() {
+  if (!csMusic) return;
+  csMusic = false;
+  for (const id of csIntervals) clearInterval(id);
+  csIntervals = [];
+  for (const node of csNodes) {
+    try { node.stop(); } catch (e) {}
+  }
+  csNodes = [];
+}
+
 // ─── Background Music (procedural, looping) ──────────────────
 const musicGain = audioCtx.createGain();
 musicGain.gain.value = 0;
