@@ -696,10 +696,16 @@ function draw() {
     return;
   }
 
+  if (gameState === STATE.GENERATING) {
+    return;
+  }
+
   if (gameState === STATE.MATCH_END) {
     drawMatchEnd();
     return;
   }
+
+  if (!map.length || !queens.length) return;
 
   // Draw map
   for (let y = 0; y < ROWS; y++) {
