@@ -413,6 +413,29 @@ function updateMutators(dt) {
           }
         }
       }
+      // Queens caught in cave-in: instant kill if on unwalkable tile or trapped
+      for (const q of queens) {
+        if (q.dead) continue;
+        const qx = Math.round(q.x), qy = Math.round(q.y);
+        const onRock = !canWalk(qx, qy);
+        const trapped = !canWalk(qx-1,qy) && !canWalk(qx+1,qy) && !canWalk(qx,qy-1) && !canWalk(qx,qy+1);
+        if (onRock || trapped) {
+          q.hp = 0;
+          screenShake = 10;
+          spawnParticles(qx, qy, q.color, 20);
+          spawnFloatingText(q.x, q.y, 'CRUSHED!', '#CC4444');
+          playDeath();
+        }
+      }
+      // Kill soldiers caught in cave-in
+      for (let si = soldiers.length - 1; si >= 0; si--) {
+        const s = soldiers[si];
+        const sx = Math.round(s.x), sy = Math.round(s.y);
+        if (sx < caveinRing || sx >= COLS - caveinRing || sy < caveinRing || sy >= ROWS - caveinRing) {
+          spawnParticles(sx, sy, '#888', 5);
+          soldiers.splice(si, 1);
+        }
+      }
       if (caveinRing <= 3) {
         spawnFloatingText(Math.floor(COLS / 2), Math.floor(ROWS / 2), 'CAVE-IN!', '#8A6A4A');
         announce('Cave in!');
@@ -532,7 +555,7 @@ function updateNarrative(dt) {
   // Typewriter effect
   if (!narrativePageReady) {
     narrativeCharTimer += dt;
-    const charsPerSec = 40;
+    const charsPerSec = 70;
     narrativeCharIndex = Math.min(Math.floor(narrativeCharTimer * charsPerSec), fullText.length);
     if (narrativeCharIndex >= fullText.length) {
       narrativePageReady = true;
