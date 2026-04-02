@@ -135,17 +135,25 @@ function update(dt) {
   // Update droppings
   updateDroppings(dt);
 
-  // Check win condition
+  // Check win condition — eliminate dead queens, last one standing wins
   for (let i = 0; i < queens.length; i++) {
-    if (queens[i].hp <= 0) {
-      roundWinner = 1 - i;
-      scores[roundWinner]++;
+    if (queens[i].hp <= 0 && !queens[i].dead) {
+      queens[i].dead = true;
       spawnParticles(queens[i].x, queens[i].y, queens[i].color, 30);
       playDeath();
-      gameState = STATE.ROUND_END;
-      roundEndTimer = 3;
-      return;
     }
+  }
+  const alive = queens.filter(q => !q.dead);
+  if (alive.length <= 1 && queens.length > 1) {
+    if (alive.length === 1) {
+      roundWinner = queens.indexOf(alive[0]);
+      scores[roundWinner]++;
+    } else {
+      roundWinner = -1; // draw
+    }
+    gameState = STATE.ROUND_END;
+    roundEndTimer = 3;
+    return;
   }
 }
 
@@ -187,14 +195,19 @@ function startNewRound() {
   const spawns = generateMap();
 
   droppings = [];
-  queens = [
-    createQueen(spawns.p1.x, spawns.p1.y, 'p1', {
-      up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ'
-    }, CHAR_TYPES[charSelect[0].charType], CHAR_COLORS[charSelect[0].colorIdx]),
-    createQueen(spawns.p2.x, spawns.p2.y, 'p2', {
-      up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter', special: 'ShiftRight'
-    }, CHAR_TYPES[charSelect[1].charType], CHAR_COLORS[charSelect[1].colorIdx]),
-  ];
+  const defaultColors = ['#3066C8', '#C83030', '#30A830', '#C8A030'];
+  queens = [];
+  for (let i = 0; i < playerCount; i++) {
+    const pKey = 'p' + (i + 1);
+    const spawn = spawns[pKey];
+    const controls = PLAYER_CONTROLS[i];
+    const cs = charSelect[i] || { charType: 0, colorIdx: i };
+    queens.push(createQueen(
+      spawn.x, spawn.y, pKey, controls,
+      CHAR_TYPES[cs.charType] || 'ANT',
+      CHAR_COLORS[cs.colorIdx] || defaultColors[i]
+    ));
+  }
 
   startMusic();
 

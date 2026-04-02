@@ -8,11 +8,15 @@ function generateMap() {
     }
   }
 
-  // Queen chambers — 3x3 clear zones
+  // Queen chambers — 3x3 clear zones (4 corners)
   const p1cx = 3, p1cy = ROWS - 4;
   const p2cx = COLS - 4, p2cy = 3;
+  const p3cx = 3, p3cy = 3;
+  const p4cx = COLS - 4, p4cy = ROWS - 4;
   clearChamber(p1cx, p1cy);
   clearChamber(p2cx, p2cy);
+  if (playerCount >= 3) clearChamber(p3cx, p3cy);
+  if (playerCount >= 4) clearChamber(p4cx, p4cy);
 
   // Rock obstacles — fill ~15% of the playing field
   const targetRocks = Math.floor(COLS * ROWS * 0.15);
@@ -22,13 +26,13 @@ function generateMap() {
     do {
       rx = 2 + Math.floor(Math.random() * (COLS - 4));
       ry = 2 + Math.floor(Math.random() * (ROWS - 4));
-    } while (nearChamber(rx, ry, p1cx, p1cy) || nearChamber(rx, ry, p2cx, p2cy));
+    } while (nearAnyChamber(rx, ry));
     const size = 5 + Math.floor(Math.random() * 8);
     for (let i = 0; i < size && rockCount < targetRocks; i++) {
       const ox = rx + Math.floor(Math.random() * 4) - 1;
       const oy = ry + Math.floor(Math.random() * 4) - 1;
       if (ox >= 0 && ox < COLS && oy >= 0 && oy < ROWS && map[oy][ox] !== T.ROCK) {
-        if (!nearChamber(ox, oy, p1cx, p1cy) && !nearChamber(ox, oy, p2cx, p2cy)) {
+        if (!nearAnyChamber(ox, oy)) {
           map[oy][ox] = T.ROCK;
           rockCount++;
         }
@@ -36,9 +40,17 @@ function generateMap() {
     }
   }
 
-  // Carve TWO distinct tunnel corridors connecting chambers
+  // Carve tunnel corridors connecting all chambers
   carveTunnel(p1cx, p1cy, p2cx, p2cy, 'upper');
   carveTunnel(p1cx, p1cy, p2cx, p2cy, 'lower');
+  if (playerCount >= 3) {
+    carveTunnel(p1cx, p1cy, p3cx, p3cy, 'upper');
+    carveTunnel(p2cx, p2cy, p3cx, p3cy, 'lower');
+  }
+  if (playerCount >= 4) {
+    carveTunnel(p3cx, p3cy, p4cx, p4cy, 'upper');
+    carveTunnel(p1cx, p1cy, p4cx, p4cy, 'lower');
+  }
 
   // Water puddles (8-14, placed in clusters of 2-4)
   const numPuddleClusters = 4 + Math.floor(Math.random() * 4);
@@ -48,7 +60,7 @@ function generateMap() {
       px = 1 + Math.floor(Math.random() * (COLS - 2));
       py = 1 + Math.floor(Math.random() * (ROWS - 2));
       attempts++;
-    } while (attempts < 100 && (map[py][px] !== T.DIRT || nearChamber(px, py, p1cx, p1cy) || nearChamber(px, py, p2cx, p2cy)));
+    } while (attempts < 100 && (map[py][px] !== T.DIRT || nearAnyChamber(px, py)));
     if (attempts < 100) {
       map[py][px] = T.PUDDLE;
       // Expand puddle cluster
@@ -57,7 +69,7 @@ function generateMap() {
         const wx = px + Math.floor(Math.random() * 3) - 1;
         const wy = py + Math.floor(Math.random() * 3) - 1;
         if (wx >= 0 && wx < COLS && wy >= 0 && wy < ROWS && map[wy][wx] === T.DIRT) {
-          if (!nearChamber(wx, wy, p1cx, p1cy) && !nearChamber(wx, wy, p2cx, p2cy)) {
+          if (!nearAnyChamber(wx, wy)) {
             map[wy][wx] = T.PUDDLE;
           }
         }
@@ -76,13 +88,43 @@ function generateMap() {
     map[ly][lx] = T.LEAF;
   }
 
-  // Ensure 2 distinct paths exist — if not, carve additional tunnels
+  // Ensure paths exist between all chambers
   if (!hasTwoDistinctPaths(p1cx, p1cy, p2cx, p2cy)) {
     carveTunnel(p1cx, p1cy, p2cx, p2cy, 'upper');
     carveTunnel(p1cx, p1cy, p2cx, p2cy, 'lower');
   }
 
-  return { p1: { x: p1cx, y: p1cy }, p2: { x: p2cx, y: p2cy } };
+  const spawns = {
+    p1: { x: p1cx, y: p1cy },
+    p2: { x: p2cx, y: p2cy },
+    p3: { x: p3cx, y: p3cy },
+    p4: { x: p4cx, y: p4cy },
+  };
+
+  // Helper closure used during map gen
+  function nearAnyChamberLocal(x, y) {
+    for (const key of Object.keys(spawns).slice(0, playerCount)) {
+      if (nearChamber(x, y, spawns[key].x, spawns[key].y)) return true;
+    }
+    return false;
+  }
+
+  return spawns;
+}
+
+// Check if position is near any active player chamber
+function nearAnyChamber(x, y) {
+  // Fallback: check all 4 corners with generous margin
+  const chambers = [
+    { x: 3, y: ROWS - 4 },
+    { x: COLS - 4, y: 3 },
+    { x: 3, y: 3 },
+    { x: COLS - 4, y: ROWS - 4 },
+  ];
+  for (let i = 0; i < playerCount; i++) {
+    if (nearChamber(x, y, chambers[i].x, chambers[i].y)) return true;
+  }
+  return false;
 }
 
 function clearChamber(cx, cy) {

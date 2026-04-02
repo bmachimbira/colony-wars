@@ -3,13 +3,17 @@
 // actual game data flows peer-to-peer via WebRTC DataChannel.
 
 let peer = null;
-let peerConn = null;
+let peerConns = []; // host keeps array of connections
+let peerConn = null; // guest keeps single connection to host
 let isHost = false;
 let isOnline = false;
+let remoteKeysBySlot = {}; // { 1: {keys}, 2: {keys}, 3: {keys} }
 let remoteKeys = {};
 let multiplayerUI = null;
 let connectionState = 'disconnected';
 let roomCode = '';
+let myPlayerSlot = 0; // 0=host(P1), 1=first guest(P2), etc.
+let onlinePlayerCount = 1;
 
 const PEER_PREFIX = 'colonyclash-';
 
@@ -174,12 +178,16 @@ function mpHost(steps) {
   peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
 
   peer.on('open', () => {
-    mpSetStatus('mp-host-status', 'Room open. Waiting for opponent...');
+    mpSetStatus('mp-host-status', 'Room open. Waiting for players... (1/4)');
   });
 
   peer.on('connection', (conn) => {
-    peerConn = conn;
-    setupPeerConnection(conn, steps);
+    const slot = peerConns.length + 1; // slots 1, 2, 3
+    if (slot > 3) { conn.close(); return; } // max 4 players
+    peerConns.push({ conn, slot });
+    onlinePlayerCount = peerConns.length + 1;
+    playerCount = onlinePlayerCount;
+    setupHostConnection(conn, slot, steps);
   });
 
   peer.on('error', (err) => {
@@ -190,8 +198,15 @@ function mpHost(steps) {
       if (codeEl) codeEl.textContent = roomCode;
       mpSetStatus('mp-host-status', 'Code taken, trying ' + roomCode + '...');
       peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
-      peer.on('open', () => mpSetStatus('mp-host-status', 'Room open. Waiting for opponent...'));
-      peer.on('connection', (conn) => { peerConn = conn; setupPeerConnection(conn, steps); });
+      peer.on('open', () => mpSetStatus('mp-host-status', 'Room open. Waiting for players... (1/4)'));
+      peer.on('connection', (conn) => {
+        const slot = peerConns.length + 1;
+        if (slot > 3) { conn.close(); return; }
+        peerConns.push({ conn, slot });
+        onlinePlayerCount = peerConns.length + 1;
+        playerCount = onlinePlayerCount;
+        setupHostConnection(conn, slot, steps);
+      });
     } else {
       mpSetStatus('mp-host-status', 'Error: ' + err.type);
     }
@@ -216,8 +231,7 @@ function mpJoin(steps) {
 
   peer.on('open', () => {
     const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
-    peerConn = conn;
-    setupPeerConnection(conn, steps);
+    setupGuestConnection(conn, steps);
   });
 
   peer.on('error', (err) => {
@@ -229,43 +243,106 @@ function mpJoin(steps) {
   });
 }
 
-// ─── Connection ──────────────────────────────────────────────
-function setupPeerConnection(conn, steps) {
+// ─── Host Connection (accepts multiple guests) ──────────────
+function setupHostConnection(conn, slot, steps) {
   conn.on('open', () => {
-    console.log('P2P connected! Room:', roomCode);
+    console.log('Player', slot + 1, 'connected! Room:', roomCode);
     connectionState = 'connected';
     isOnline = true;
-    mpShowStep(steps, 'connected');
-    setTimeout(() => {
-      closeMultiplayerMenu();
-      if (gameState === STATE.TITLE || gameState === STATE.NARRATIVE) {
+    // Tell the guest their slot
+    conn.send({ type: 'slot', slot });
+    mpSetStatus('mp-host-status', 'Players: ' + onlinePlayerCount + '/4. Press START GAME when ready.');
+
+    // Show start button after first player joins
+    let startBtn = document.getElementById('mp-start-btn');
+    if (!startBtn) {
+      startBtn = document.createElement('button');
+      startBtn.id = 'mp-start-btn';
+      startBtn.textContent = 'START GAME (' + onlinePlayerCount + ' players)';
+      Object.assign(startBtn.style, {
+        background: '#30A830', color: '#fff', border: 'none', padding: '12px 24px',
+        fontFamily: 'monospace', fontSize: '16px', cursor: 'pointer', margin: '12px',
+        borderRadius: '4px', fontWeight: 'bold',
+      });
+      startBtn.addEventListener('click', () => {
+        // Broadcast game start to all guests
+        for (const pc of peerConns) {
+          try { pc.conn.send({ type: 'start', playerCount: onlinePlayerCount }); } catch (e) {}
+        }
+        closeMultiplayerMenu();
+        playerCount = onlinePlayerCount;
         gameState = STATE.GENERATING;
-      }
-    }, 1500);
+      });
+      // Insert before cancel button
+      const hostStep = steps.host;
+      hostStep.appendChild(startBtn);
+    } else {
+      startBtn.textContent = 'START GAME (' + onlinePlayerCount + ' players)';
+    }
   });
 
   conn.on('data', (data) => {
     if (data && data.type === 'input') {
-      remoteKeys = data.keys;
+      remoteKeysBySlot[slot] = data.keys;
+      // Relay to other guests
+      for (const pc of peerConns) {
+        if (pc.slot !== slot) {
+          try { pc.conn.send({ type: 'relay', slot, keys: data.keys }); } catch (e) {}
+        }
+      }
     }
   });
 
   conn.on('close', () => {
-    console.log('P2P disconnected');
-    isOnline = false;
-    connectionState = 'disconnected';
+    console.log('Player', slot + 1, 'disconnected');
+    peerConns = peerConns.filter(pc => pc.slot !== slot);
+    onlinePlayerCount = peerConns.length + 1;
+  });
+}
+
+// ─── Guest Connection ────────────────────────────────────────
+function setupGuestConnection(conn, steps) {
+  conn.on('open', () => {
+    console.log('Connected to host! Room:', roomCode);
+    peerConn = conn;
+    connectionState = 'connected';
+    isOnline = true;
+    mpShowStep(steps, 'connected');
   });
 
-  conn.on('error', (err) => {
-    console.error('P2P error:', err);
+  conn.on('data', (data) => {
+    if (data && data.type === 'slot') {
+      myPlayerSlot = data.slot;
+      console.log('Assigned player slot:', myPlayerSlot + 1);
+    } else if (data && data.type === 'input') {
+      // Host's input
+      remoteKeysBySlot[0] = data.keys;
+    } else if (data && data.type === 'relay') {
+      // Another guest's input relayed through host
+      remoteKeysBySlot[data.slot] = data.keys;
+    } else if (data && data.type === 'start') {
+      playerCount = data.playerCount;
+      closeMultiplayerMenu();
+      gameState = STATE.GENERATING;
+    }
+  });
+
+  conn.on('close', () => {
+    console.log('Disconnected from host');
+    isOnline = false;
+    connectionState = 'disconnected';
   });
 }
 
 function mpDisconnect(steps) {
+  for (const pc of peerConns) { try { pc.conn.close(); } catch (e) {} }
+  peerConns = [];
   if (peerConn) { peerConn.close(); peerConn = null; }
   if (peer) { peer.destroy(); peer = null; }
   isOnline = false;
   connectionState = 'disconnected';
+  onlinePlayerCount = 1;
+  remoteKeysBySlot = {};
   mpShowStep(steps, 'menu');
 }
 
@@ -273,28 +350,42 @@ function mpDisconnect(steps) {
 let mpSendTimer = 0;
 
 function mpSendInput(dt) {
-  if (!isOnline || !peerConn || !peerConn.open) return;
+  if (!isOnline) return;
 
   mpSendTimer += dt;
   if (mpSendTimer < 0.016) return;
   mpSendTimer = 0;
 
-  const localControls = isHost
-    ? { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space' }
-    : { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter' };
+  // Send our local player's controls
+  const mySlot = isHost ? 0 : myPlayerSlot;
+  const myControls = PLAYER_CONTROLS[mySlot];
+  if (!myControls) return;
 
   const inputState = {};
-  for (const [action, code] of Object.entries(localControls)) {
+  for (const [action, code] of Object.entries(myControls)) {
     inputState[code] = !!keys[code];
   }
 
-  try { peerConn.send({ type: 'input', keys: inputState }); } catch (e) {}
+  if (isHost) {
+    // Host: broadcast to all guests
+    for (const pc of peerConns) {
+      try { pc.conn.send({ type: 'input', keys: inputState }); } catch (e) {}
+    }
+  } else {
+    // Guest: send to host
+    if (peerConn && peerConn.open) {
+      try { peerConn.send({ type: 'input', keys: inputState }); } catch (e) {}
+    }
+  }
 }
 
 function mpApplyRemoteInput() {
   if (!isOnline) return;
-  for (const [code, pressed] of Object.entries(remoteKeys)) {
-    keys[code] = pressed;
+  // Apply each remote player's keys
+  for (const [slot, slotKeys] of Object.entries(remoteKeysBySlot)) {
+    for (const [code, pressed] of Object.entries(slotKeys)) {
+      keys[code] = pressed;
+    }
   }
 }
 

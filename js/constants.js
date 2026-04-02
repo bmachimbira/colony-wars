@@ -31,6 +31,17 @@ const STATE = { NARRATIVE: -1, TITLE: 0, CHAR_SELECT: 7, GENERATING: 1, COUNTDOW
 const CHAR_TYPES = ['ANT', 'BEETLE', 'COCKROACH'];
 const CHAR_COLORS = ['#3066C8', '#C83030', '#30A830', '#C8A030', '#A030C8', '#30C8C8', '#C86030', '#FFFFFF'];
 
+// Player controls (P1-P4)
+const PLAYER_CONTROLS = [
+  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ' },
+  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter', special: 'ShiftRight' },
+  { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL', shoot: 'KeyH', special: 'KeyY' },
+  { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6', shoot: 'Numpad0', special: 'NumpadDecimal' },
+];
+
+// Player count (set by multiplayer lobby or local)
+let playerCount = 2;
+
 // Power-up types
 const POWER_TYPES = ['SUGAR', 'RAPID', 'SHIELD', 'MEGA'];
 const MAX_BULLETS_PER_PLAYER = 3;

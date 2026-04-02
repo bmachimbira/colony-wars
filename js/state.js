@@ -146,10 +146,12 @@ let screenShake = 0;
 let dustMotes = [];
 let droppings = [];
 
-// Character selection state
+// Character selection state (up to 4 players)
 let charSelect = [
   { charType: 0, colorIdx: 0, ready: false }, // P1
   { charType: 0, colorIdx: 1, ready: false }, // P2
+  { charType: 1, colorIdx: 2, ready: false }, // P3
+  { charType: 2, colorIdx: 3, ready: false }, // P4
 ];
 
 // Pre-render vignette overlay
