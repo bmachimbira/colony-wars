@@ -1,10 +1,17 @@
 // ─── Queen Creation ──────────────────────────────────────────
-function createQueen(x, y, colony, controls) {
+function createQueen(x, y, colony, controls, charType, color) {
   return {
     x, y, dir: 'right', hp: 3, speed: 3, colony,
     controls, canShoot: true, shootCooldown: 0,
     bobPhase: 0, moving: false, invTimer: 0, walkSoundTimer: 0,
     activePowerUp: null, powerUpTimer: 0, megaShots: 0,
+    charType: charType || 'ANT',
+    color: color || COLORS.p1,
+    specialUses: 3, // max 3 special uses per round
+    specialCooldown: 0,
+    defendTimer: 0, // cockroach belly-up timer
+    flyTimer: 0, // beetle fly timer
+    flyTargetX: 0, flyTargetY: 0,
   };
 }
 
@@ -129,6 +136,63 @@ function updateQueen(q, dt) {
     if (q.powerUpTimer <= 0) { q.activePowerUp = null; }
   }
 
+  // Special ability cooldown
+  if (q.specialCooldown > 0) q.specialCooldown -= dt;
+  if (q.defendTimer > 0) q.defendTimer -= dt;
+
+  // Beetle fly animation
+  if (q.flyTimer > 0) {
+    q.flyTimer -= dt;
+    const progress = 1 - (q.flyTimer / 0.3);
+    q.x += (q.flyTargetX - q.x) * progress * dt * 10;
+    q.y += (q.flyTargetY - q.y) * progress * dt * 10;
+    if (q.flyTimer <= 0) {
+      q.x = q.flyTargetX;
+      q.y = q.flyTargetY;
+    }
+  }
+
+  // Special ability activation
+  if (keys[q.controls.special] && q.specialUses > 0 && q.specialCooldown <= 0) {
+    keys[q.controls.special] = false;
+    if (q.charType === 'COCKROACH') {
+      // Belly-up deflect mode for 1 second
+      q.defendTimer = 1.0;
+      q.specialUses--;
+      q.specialCooldown = 2;
+    } else if (q.charType === 'BEETLE') {
+      // Fly to a nearby tunnel tile
+      const candidates = [];
+      for (let dy = -5; dy <= 5; dy++) {
+        for (let dx = -5; dx <= 5; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = Math.round(q.x) + dx, ny = Math.round(q.y) + dy;
+          if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && canWalk(nx, ny)) {
+            const dist = Math.abs(dx) + Math.abs(dy);
+            if (dist >= 3) candidates.push({ x: nx, y: ny });
+          }
+        }
+      }
+      if (candidates.length > 0) {
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        q.flyTargetX = target.x;
+        q.flyTargetY = target.y;
+        q.flyTimer = 0.3;
+        q.invTimer = 0.4;
+        q.specialUses--;
+        q.specialCooldown = 2;
+        spawnParticles(Math.round(q.x), Math.round(q.y), q.color, 6);
+      }
+    } else if (q.charType === 'ANT') {
+      // Drop a lethal dropping at current position
+      const dx = Math.round(q.x), dy = Math.round(q.y);
+      droppings.push({ x: dx, y: dy, owner: q.colony, lifetime: 15 });
+      q.specialUses--;
+      q.specialCooldown = 1;
+      spawnParticles(dx, dy, '#5A3A20', 4);
+    }
+  }
+
   // Check spawn mound claim
   for (const m of mounds) {
     if (m.state === 'ACTIVE' && Math.round(q.x) === m.x && Math.round(q.y) === m.y) {
@@ -200,6 +264,14 @@ function updateBullets(dt) {
     for (const q of queens) {
       if (q.colony !== b.owner && q.invTimer <= 0) {
         if (Math.abs(q.x - b.x + 0.5) < 0.6 && Math.abs(q.y - b.y + 0.5) < 0.6) {
+          // Cockroach belly-up deflects bullets
+          if (q.charType === 'COCKROACH' && q.defendTimer > 0) {
+            b.dx = -b.dx;
+            b.dy = -b.dy;
+            b.owner = q.colony; // bounced bullet now belongs to cockroach
+            spawnParticles(Math.round(q.x), Math.round(q.y), q.color, 6);
+            break;
+          }
           if (q.activePowerUp === 'SHIELD') {
             q.activePowerUp = null;
           } else {
@@ -208,7 +280,7 @@ function updateBullets(dt) {
             screenShake = q.hp <= 0 ? 12 : 6;
           }
           playHit();
-          spawnParticles(Math.round(q.x), Math.round(q.y), q.colony === 'blue' ? COLORS.p1 : COLORS.p2, 8);
+          spawnParticles(Math.round(q.x), Math.round(q.y), q.color, 8);
           bullets.splice(i, 1);
           break;
         }
@@ -220,7 +292,8 @@ function updateBullets(dt) {
       const sol = soldiers[s];
       if (sol.colony !== b.owner) {
         if (Math.abs(sol.x - b.x + 0.5) < 0.6 && Math.abs(sol.y - b.y + 0.5) < 0.6) {
-          spawnParticles(Math.round(sol.x), Math.round(sol.y), sol.colony === 'blue' ? COLORS.p1 : COLORS.p2, 5);
+          const solOwner = queens.find(q => q.colony === sol.colony);
+          spawnParticles(Math.round(sol.x), Math.round(sol.y), solOwner ? solOwner.color : '#888', 5);
           soldiers.splice(s, 1);
           bullets.splice(i, 1);
           break;

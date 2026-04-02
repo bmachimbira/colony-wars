@@ -13,6 +13,11 @@ function draw() {
     return;
   }
 
+  if (gameState === STATE.CHAR_SELECT) {
+    drawCharSelect();
+    return;
+  }
+
   if (gameState === STATE.GENERATING) {
     return;
   }
@@ -226,7 +231,8 @@ function draw() {
       ctx.arc(mx - 4, my - 4, 2, 0, Math.PI * 2);
       ctx.fill();
     } else if (mound.state === 'CLAIMED') {
-      const col = mound.claimedBy === 'blue' ? COLORS.p1 : COLORS.p2;
+      const claimer = queens.find(q => q.colony === mound.claimedBy);
+      const col = claimer ? claimer.color : '#fff';
       // Colony-colored dome
       const grad = ctx.createRadialGradient(mx - 3, my - 3, 1, mx, my, TILE * 0.4);
       grad.addColorStop(0, COLORS.moundGold);
@@ -235,7 +241,6 @@ function draw() {
       ctx.beginPath();
       ctx.arc(mx, my, TILE * 0.35, 0, Math.PI * 2);
       ctx.fill();
-      // Colony border
       ctx.strokeStyle = col;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -332,13 +337,17 @@ function draw() {
 
   // Draw soldiers
   for (const s of soldiers) {
-    drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
+    const soldierOwner = queens.find(q => q.colony === s.colony);
+    drawAnt(s.x, s.y, s.dir, soldierOwner ? soldierOwner.color : '#888', 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
   }
+
+  // Draw anteater
+  drawAnteater();
 
   // Draw queens
   for (const q of queens) {
     if (q.invTimer > 0 && Math.floor(q.invTimer * 10) % 2 === 0) continue;
-    const col = q.colony === 'blue' ? COLORS.p1 : COLORS.p2;
+    const col = q.color;
 
     // Glow
     ctx.save();
@@ -363,6 +372,57 @@ function draw() {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+
+    // Cockroach belly-up defend indicator
+    if (q.charType === 'COCKROACH' && q.defendTimer > 0) {
+      ctx.strokeStyle = '#FFAA00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(q.x * TILE + TILE / 2, q.y * TILE + TILE / 2, TILE * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#FFAA00';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BLOCK', q.x * TILE + TILE / 2, q.y * TILE - TILE * 0.3);
+    }
+
+    // Beetle flying indicator
+    if (q.charType === 'BEETLE' && q.flyTimer > 0) {
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = q.color;
+      ctx.beginPath();
+      // Wing shapes
+      const wx = q.x * TILE + TILE / 2, wy = q.y * TILE + TILE / 2;
+      ctx.ellipse(wx - TILE * 0.5, wy, TILE * 0.4, TILE * 0.2, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(wx + TILE * 0.5, wy, TILE * 0.4, TILE * 0.2, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Special uses indicator (small dots)
+    if (q.specialUses > 0) {
+      for (let si = 0; si < q.specialUses; si++) {
+        ctx.fillStyle = '#FFDD44';
+        ctx.beginPath();
+        ctx.arc(q.x * TILE + TILE / 2 - 6 + si * 6, q.y * TILE - 4, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Draw droppings
+  for (const d of droppings) {
+    const dx = d.x * TILE + TILE / 2, dy = d.y * TILE + TILE / 2;
+    ctx.fillStyle = '#5A3A20';
+    ctx.globalAlpha = Math.min(1, d.lifetime / 3);
+    ctx.beginPath();
+    ctx.arc(dx - 3, dy - 2, 3, 0, Math.PI * 2);
+    ctx.arc(dx + 3, dy, 3.5, 0, Math.PI * 2);
+    ctx.arc(dx - 1, dy + 3, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // Draw bullets with glow
@@ -464,12 +524,13 @@ function draw() {
   if (gameState === STATE.ROUND_END) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, W, H);
-    const winCol = roundWinner === 0 ? COLORS.p1 : COLORS.p2;
-    const loser = roundWinner === 0 ? 'RED' : 'BLUE';
+    const winCol = queens[roundWinner] ? queens[roundWinner].color : '#fff';
+    const loserIdx = 1 - roundWinner;
+    const loserName = queens[loserIdx] ? queens[loserIdx].charType : 'ENEMY';
     ctx.fillStyle = winCol;
     ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(loser + ' COLONY FALLS', W / 2, H / 2 - 20);
+    ctx.fillText('P' + (loserIdx + 1) + ' ' + loserName + ' FALLS', W / 2, H / 2 - 20);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 22px monospace';
     ctx.fillText('P' + (roundWinner + 1) + ' WINS THE ROUND', W / 2, H / 2 + 20);
@@ -760,28 +821,33 @@ function drawHUD() {
   // P1 label
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'left';
-  ctx.fillStyle = COLORS.p1;
-  ctx.fillText('P1', 10, 19);
+  ctx.fillStyle = queens[0].color;
+  ctx.fillText('P1 ' + queens[0].charType, 10, 19);
 
   // P1 hearts
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = i < queens[0].hp ? COLORS.p1 : 'rgba(100,100,100,0.4)';
-    ctx.strokeStyle = i < queens[0].hp ? COLORS.p1 : 'rgba(100,100,100,0.4)';
+  for (let i = 0; i < Math.max(3, queens[0].hp); i++) {
+    ctx.fillStyle = i < queens[0].hp ? queens[0].color : 'rgba(100,100,100,0.4)';
+    ctx.strokeStyle = i < queens[0].hp ? queens[0].color : 'rgba(100,100,100,0.4)';
     ctx.lineWidth = 1;
-    drawHeart(36 + i * 16, 8, 6, i < queens[0].hp);
+    drawHeart(80 + i * 16, 8, 6, i < queens[0].hp);
   }
+
+  // P1 special uses
+  ctx.fillStyle = '#FFDD44';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('Q:' + queens[0].specialUses + '/3', 10, 32);
 
   // P1 power-up indicator
   if (queens[0].activePowerUp) {
     const pcol = POWER_COLORS[queens[0].activePowerUp] || COLORS.powerUp;
     ctx.fillStyle = pcol;
     ctx.font = 'bold 10px monospace';
-    ctx.fillText(queens[0].activePowerUp, 88, 18);
-    // Timer bar
+    ctx.fillText(queens[0].activePowerUp, 88, 32);
     if (queens[0].powerUpTimer > 0) {
       const barW = 48 * Math.min(1, queens[0].powerUpTimer / 80);
       ctx.fillStyle = pcol;
-      ctx.fillRect(88, 20, barW, 2);
+      ctx.fillRect(88, 34, barW, 2);
     }
   }
 
@@ -793,16 +859,22 @@ function drawHUD() {
   // P2 label
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'right';
-  ctx.fillStyle = COLORS.p2;
-  ctx.fillText('P2', W - 10, 19);
+  ctx.fillStyle = queens[1].color;
+  ctx.fillText('P2 ' + queens[1].charType, W - 10, 19);
 
   // P2 hearts
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = i < queens[1].hp ? COLORS.p2 : 'rgba(100,100,100,0.4)';
-    ctx.strokeStyle = i < queens[1].hp ? COLORS.p2 : 'rgba(100,100,100,0.4)';
+  for (let i = 0; i < Math.max(3, queens[1].hp); i++) {
+    ctx.fillStyle = i < queens[1].hp ? queens[1].color : 'rgba(100,100,100,0.4)';
+    ctx.strokeStyle = i < queens[1].hp ? queens[1].color : 'rgba(100,100,100,0.4)';
     ctx.lineWidth = 1;
-    drawHeart(W - 82 + i * 16, 8, 6, i < queens[1].hp);
+    drawHeart(W - 126 + i * 16, 8, 6, i < queens[1].hp);
   }
+
+  // P2 special uses
+  ctx.fillStyle = '#FFDD44';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('RS:' + queens[1].specialUses + '/3', W - 10, 32);
 
   // P2 power-up indicator
   if (queens[1].activePowerUp) {
@@ -810,11 +882,11 @@ function drawHUD() {
     ctx.fillStyle = pcol;
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(queens[1].activePowerUp, W - 88, 18);
+    ctx.fillText(queens[1].activePowerUp, W - 88, 32);
     if (queens[1].powerUpTimer > 0) {
       const barW = 48 * Math.min(1, queens[1].powerUpTimer / 80);
       ctx.fillStyle = pcol;
-      ctx.fillRect(W - 88 - barW, 20, barW, 2);
+      ctx.fillRect(W - 88 - barW, 34, barW, 2);
     }
   }
 
@@ -831,9 +903,9 @@ function drawHUD() {
   ctx.font = '10px monospace';
   ctx.fillStyle = '#555';
   ctx.textAlign = 'left';
-  ctx.fillText('WASD+SPACE', 8, H - 8);
+  ctx.fillText('WASD+SPACE  Q:special', 8, H - 8);
   ctx.textAlign = 'right';
-  ctx.fillText('ARROWS+ENTER', W - 8, H - 8);
+  ctx.fillText('ARROWS+ENTER  RShift:special', W - 8, H - 8);
 }
 
 function drawNarrative() {
@@ -975,11 +1047,11 @@ function drawTitle() {
     ctx.fillText('PRESS ANY KEY TO START', W / 2, H / 2 + 60);
   }
 
-  ctx.fillStyle = COLORS.p1;
+  ctx.fillStyle = CHAR_COLORS[0];
   ctx.font = '12px monospace';
   ctx.textAlign = 'left';
   ctx.fillText('P1: WASD + SPACE', W / 2 - 150, H / 2 + 110);
-  ctx.fillStyle = COLORS.p2;
+  ctx.fillStyle = CHAR_COLORS[1];
   ctx.textAlign = 'right';
   ctx.fillText('P2: ARROWS + ENTER', W / 2 + 150, H / 2 + 110);
 
@@ -989,13 +1061,184 @@ function drawTitle() {
   ctx.fillText('Gamepads supported: D-pad/Stick + A/RB/RT to shoot', W / 2, H / 2 + 135);
 }
 
+function drawCharSelect() {
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = COLORS.moundGold;
+  ctx.font = 'bold 36px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('CHOOSE YOUR FIGHTER', W / 2, 60);
+
+  const panelW = W * 0.4;
+  const panelH = H * 0.7;
+  const descriptions = {
+    ANT: 'Drop lethal traps (Q/RShift)',
+    BEETLE: 'Fly to escape danger (Q/RShift)',
+    COCKROACH: 'Deflect bullets (Q/RShift)',
+  };
+
+  for (let p = 0; p < 2; p++) {
+    const sel = charSelect[p];
+    const cx = p === 0 ? W * 0.25 : W * 0.75;
+    const top = 90;
+
+    // Panel background
+    ctx.fillStyle = sel.ready ? 'rgba(50,120,50,0.3)' : 'rgba(255,255,255,0.05)';
+    ctx.fillRect(cx - panelW / 2, top, panelW, panelH);
+    ctx.strokeStyle = sel.ready ? '#4A4' : '#555';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - panelW / 2, top, panelW, panelH);
+
+    // Player label
+    ctx.fillStyle = CHAR_COLORS[sel.colorIdx];
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PLAYER ' + (p + 1), cx, top + 35);
+
+    // Character name
+    const charName = CHAR_TYPES[sel.charType];
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px monospace';
+    ctx.fillText(charName, cx, top + 80);
+
+    // Up/down arrows
+    ctx.fillStyle = '#888';
+    ctx.font = '20px monospace';
+    ctx.fillText('\u25B2', cx, top + 55);
+    ctx.fillText('\u25BC', cx, top + 100);
+
+    // Draw character preview
+    ctx.save();
+    ctx.translate(cx, top + 170);
+    drawCharacterPreview(charName, CHAR_COLORS[sel.colorIdx], 2.5);
+    ctx.restore();
+
+    // Description
+    ctx.fillStyle = '#aaa';
+    ctx.font = '12px monospace';
+    ctx.fillText(descriptions[charName], cx, top + 250);
+    ctx.fillText('3 uses per round', cx, top + 270);
+
+    // Color selection
+    ctx.fillStyle = '#888';
+    ctx.font = '14px monospace';
+    ctx.fillText('COLOR', cx, top + 310);
+    const colorY = top + 325;
+    const totalColorsW = CHAR_COLORS.length * 22;
+    for (let ci = 0; ci < CHAR_COLORS.length; ci++) {
+      const ccx = cx - totalColorsW / 2 + ci * 22 + 11;
+      ctx.fillStyle = CHAR_COLORS[ci];
+      ctx.beginPath();
+      ctx.arc(ccx, colorY, 8, 0, Math.PI * 2);
+      ctx.fill();
+      if (ci === sel.colorIdx) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ccx, colorY, 11, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // Controls hint
+    ctx.fillStyle = '#666';
+    ctx.font = '11px monospace';
+    if (p === 0) {
+      ctx.fillText('W/S: character  A/D: color', cx, top + panelH - 40);
+      ctx.fillText('SPACE: ready', cx, top + panelH - 22);
+    } else {
+      ctx.fillText('\u2191/\u2193: character  \u2190/\u2192: color', cx, top + panelH - 40);
+      ctx.fillText('ENTER: ready', cx, top + panelH - 22);
+    }
+
+    // Ready status
+    if (sel.ready) {
+      ctx.fillStyle = '#4A4';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText('READY!', cx, top + panelH - 60);
+    }
+  }
+}
+
+function drawCharacterPreview(charType, color, scale) {
+  const s = TILE * 0.45 * scale;
+  ctx.fillStyle = color;
+
+  if (charType === 'ANT') {
+    // Standard ant body
+    ctx.beginPath(); ctx.ellipse(-s * 0.85, 0, s * 0.55, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-s * 0.25, 0, s * 0.12, s * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.1, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.65, 0, s * 0.3, s * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s * 0.75, -s * 0.12, s * 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.75, s * 0.12, s * 0.08, 0, Math.PI * 2); ctx.fill();
+    // Antennae
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(s * 0.85, -s * 0.2); ctx.quadraticCurveTo(s * 1.1, -s * 0.6, s * 1.4, -s * 0.75); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s * 0.85, s * 0.2); ctx.quadraticCurveTo(s * 1.1, s * 0.6, s * 1.4, s * 0.75); ctx.stroke();
+  } else if (charType === 'BEETLE') {
+    // Beetle: wider, rounder, with wing case
+    ctx.beginPath(); ctx.ellipse(-s * 0.5, 0, s * 0.7, s * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    // Wing line
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-s * 1.0, 0); ctx.lineTo(s * 0.1, 0); ctx.stroke();
+    // Head
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(s * 0.5, 0, s * 0.3, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    // Horn
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(s * 0.7, 0); ctx.quadraticCurveTo(s * 1.1, -s * 0.5, s * 1.3, -s * 0.3); ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s * 0.6, -s * 0.15, s * 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.6, s * 0.15, s * 0.08, 0, Math.PI * 2); ctx.fill();
+    // Legs
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(i * s * 0.3, -s * 0.5); ctx.lineTo(i * s * 0.3 - s * 0.15, -s * 0.9); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * s * 0.3, s * 0.5); ctx.lineTo(i * s * 0.3 - s * 0.15, s * 0.9); ctx.stroke();
+    }
+  } else if (charType === 'COCKROACH') {
+    // Cockroach: long, flat, segmented
+    ctx.beginPath(); ctx.ellipse(-s * 0.7, 0, s * 0.45, s * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-s * 0.2, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.25, 0, s * 0.3, s * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.6, 0, s * 0.25, s * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    // Segment lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    for (let si = -3; si <= 1; si++) {
+      ctx.beginPath(); ctx.moveTo(si * s * 0.25, -s * 0.35); ctx.lineTo(si * s * 0.25, s * 0.35); ctx.stroke();
+    }
+    // Long antennae
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s * 0.8, -s * 0.15); ctx.quadraticCurveTo(s * 1.3, -s * 0.5, s * 1.8, -s * 0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s * 0.8, s * 0.15); ctx.quadraticCurveTo(s * 1.3, s * 0.5, s * 1.8, s * 0.6); ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s * 0.7, -s * 0.1, s * 0.06, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.7, s * 0.1, s * 0.06, 0, Math.PI * 2); ctx.fill();
+    // Legs
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    for (let i = -2; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(i * s * 0.25, -s * 0.3); ctx.lineTo(i * s * 0.25 - s * 0.1, -s * 0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * s * 0.25, s * 0.3); ctx.lineTo(i * s * 0.25 - s * 0.1, s * 0.7); ctx.stroke();
+    }
+    // Cerci (tail appendages)
+    ctx.beginPath(); ctx.moveTo(-s * 1.1, -s * 0.15); ctx.lineTo(-s * 1.5, -s * 0.3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s * 1.1, s * 0.15); ctx.lineTo(-s * 1.5, s * 0.3); ctx.stroke();
+  }
+}
+
 function drawMatchEnd() {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
   ctx.drawImage(vignetteCanvas, 0, 0);
 
   const winner = scores[0] >= 3 ? 0 : 1;
-  const col = winner === 0 ? COLORS.p1 : COLORS.p2;
+  const col = (queens.length > winner && queens[winner]) ? queens[winner].color : (winner === 0 ? CHAR_COLORS[charSelect[0].colorIdx] : CHAR_COLORS[charSelect[1].colorIdx]);
 
   // Glow title
   ctx.save();

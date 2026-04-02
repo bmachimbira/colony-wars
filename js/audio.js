@@ -284,6 +284,97 @@ function playMatchWin() {
   });
 }
 
+function playAnteaterRoar() {
+  const t = audioCtx.currentTime;
+  // Deep growl — low sawtooth with noise
+  const osc = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  osc.type = 'sawtooth';
+  osc2.type = 'sawtooth';
+  osc.frequency.setValueAtTime(60, t);
+  osc.frequency.exponentialRampToValueAtTime(35, t + 0.8);
+  osc2.frequency.setValueAtTime(63, t);
+  osc2.frequency.exponentialRampToValueAtTime(37, t + 0.8);
+  filter.type = 'lowpass';
+  filter.frequency.value = 300;
+  filter.Q.value = 3;
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+  osc.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gain);
+  gain.connect(masterGain);
+  osc.start(t);
+  osc2.start(t);
+  osc.stop(t + 0.8);
+  osc2.stop(t + 0.8);
+  // Noise layer
+  const bufSize = Math.floor(audioCtx.sampleRate * 0.5);
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const nGain = audioCtx.createGain();
+  const nFilter = audioCtx.createBiquadFilter();
+  nFilter.type = 'lowpass';
+  nFilter.frequency.value = 200;
+  nGain.gain.setValueAtTime(0.15, t);
+  nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  noise.connect(nFilter);
+  nFilter.connect(nGain);
+  nGain.connect(masterGain);
+  noise.start(t);
+}
+
+function playAnteaterTongue() {
+  const t = audioCtx.currentTime;
+  // Quick whip sound
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(200, t);
+  osc.frequency.exponentialRampToValueAtTime(1200, t + 0.08);
+  osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
+  gain.gain.setValueAtTime(0.15, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + 0.15);
+}
+
+function playAnteaterDeath() {
+  const t = audioCtx.currentTime;
+  // Descending wail + explosion
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(300, t);
+  osc.frequency.exponentialRampToValueAtTime(30, t + 1);
+  gain.gain.setValueAtTime(0.25, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 1);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + 1);
+  // Big noise burst
+  const bufSize = Math.floor(audioCtx.sampleRate * 0.6);
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const nGain = audioCtx.createGain();
+  nGain.gain.setValueAtTime(0.2, t);
+  nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  noise.connect(nGain);
+  nGain.connect(masterGain);
+  noise.start(t);
+}
+
 // ─── Background Music (procedural, looping) ──────────────────
 const musicGain = audioCtx.createGain();
 musicGain.gain.value = 0;
