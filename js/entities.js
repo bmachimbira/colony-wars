@@ -454,9 +454,7 @@ function updateMound(dt) {
 
     if (attempts < 100) {
       mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
-      playMoundAppear();
       spawnFloatingText(mx, my, 'SPAWN MOUND!', '#E8C840');
-      announce('Spawn mound appeared!');
     }
     moundTimer = 1 + gameRandom() * 1;
   }

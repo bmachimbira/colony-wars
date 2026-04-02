@@ -194,16 +194,73 @@ function playCountdownTick() {
 
 function playRoundStart() {
   const t = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = 1200;
-  gain.gain.setValueAtTime(0.2, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  osc.connect(gain);
-  gain.connect(masterGain);
-  osc.start(t);
-  osc.stop(t + 0.2);
+
+  // Massive impact slam
+  const bufferSize = Math.floor(audioCtx.sampleRate * 0.4);
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.2);
+  }
+  const slam = audioCtx.createBufferSource();
+  slam.buffer = buffer;
+  const slamGain = audioCtx.createGain();
+  slamGain.gain.setValueAtTime(0.6, t);
+  slamGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  const slamFilter = audioCtx.createBiquadFilter();
+  slamFilter.type = 'lowpass';
+  slamFilter.frequency.value = 400;
+  slam.connect(slamFilter);
+  slamFilter.connect(slamGain);
+  slamGain.connect(masterGain);
+  slam.start(t);
+
+  // Deep sub bass boom
+  const sub = audioCtx.createOscillator();
+  const subGain = audioCtx.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(50, t);
+  sub.frequency.exponentialRampToValueAtTime(25, t + 0.8);
+  subGain.gain.setValueAtTime(0.5, t);
+  subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+  sub.connect(subGain);
+  subGain.connect(masterGain);
+  sub.start(t);
+  sub.stop(t + 0.8);
+
+  // Slow rising power chord — heavy and sustained
+  const fightNotes = [110, 165, 220, 330];
+  fightNotes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = i < 2 ? 'sawtooth' : 'square';
+    osc.frequency.setValueAtTime(freq * 0.6, t);
+    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.3);
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.setValueAtTime(0.2, t + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1500, t);
+    filter.frequency.exponentialRampToValueAtTime(200, t + 1.2);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 1.2);
+  });
+
+  // Voice announcement: "FIGHT!" — slow, deep, dramatic
+  if (VOICE_ENABLED) {
+    const utter = new SpeechSynthesisUtterance('FIGHT!');
+    utter.rate = 0.4;
+    utter.pitch = 0.3;
+    utter.volume = 1.0;
+    const voices = speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.name.includes('Daniel') || v.name.includes('Alex') || v.name.includes('Google UK English Male'));
+    if (preferred) utter.voice = preferred;
+    speechSynthesis.speak(utter);
+  }
 }
 
 function playSoldierSpawn() {
@@ -222,27 +279,7 @@ function playSoldierSpawn() {
 }
 
 function playMoundAppear() {
-  const t = audioCtx.currentTime;
-  // Mystical rising bubble — two detuned sines
-  const osc1 = audioCtx.createOscillator();
-  const osc2 = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc1.type = 'sine';
-  osc2.type = 'sine';
-  osc1.frequency.setValueAtTime(350, t);
-  osc1.frequency.exponentialRampToValueAtTime(700, t + 0.25);
-  osc2.frequency.setValueAtTime(355, t);
-  osc2.frequency.exponentialRampToValueAtTime(710, t + 0.25);
-  gain.gain.setValueAtTime(0.1, t);
-  gain.gain.setValueAtTime(0.1, t + 0.15);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-  osc1.connect(gain);
-  osc2.connect(gain);
-  gain.connect(masterGain);
-  osc1.start(t);
-  osc2.start(t);
-  osc1.stop(t + 0.3);
-  osc2.stop(t + 0.3);
+  // Silent — mounds appear too frequently for a sound
 }
 
 function playPowerUpAppear() {
