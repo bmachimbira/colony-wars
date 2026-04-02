@@ -69,8 +69,47 @@ function draw() {
         ctx.fill();
         ctx.globalAlpha = 1;
       } else if (t === T.DUG || t === T.TUNNEL) {
-        ctx.fillStyle = COLORS.dug;
+        ctx.fillStyle = COLORS.dirt;
         ctx.fillRect(px, py, TILE, TILE);
+        // Draw rounded tunnel shape
+        const r = TILE * 0.35;
+        const isOpen = (dx, dy) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return false;
+          const nt = map[ny][nx];
+          return nt === T.DUG || nt === T.TUNNEL || nt === T.LEAF;
+        };
+        const up = isOpen(0, -1), down = isOpen(0, 1), left = isOpen(-1, 0), right = isOpen(1, 0);
+        const tl = isOpen(-1, -1), tr = isOpen(1, -1), bl = isOpen(-1, 1), br = isOpen(1, 1);
+        ctx.fillStyle = COLORS.dug;
+        ctx.beginPath();
+        // Top-left corner
+        if (up && left && tl) { ctx.moveTo(px, py); }
+        else if (up && left) { ctx.moveTo(px, py); }
+        else if (up) { ctx.moveTo(px + r, py); ctx.quadraticCurveTo(px, py, px, py + r); ctx.lineTo(px, py); ctx.moveTo(px + r, py); }
+        else if (left) { ctx.moveTo(px, py + r); ctx.quadraticCurveTo(px, py, px + r, py); ctx.lineTo(px, py); ctx.moveTo(px, py + r); }
+        else { ctx.moveTo(px + r, py); }
+        // Draw as rounded rect with selective corners
+        const rtl = (up || left) ? (up && left ? 0 : r * 0.5) : r;
+        const rtr = (up || right) ? (up && right ? 0 : r * 0.5) : r;
+        const rbr = (down || right) ? (down && right ? 0 : r * 0.5) : r;
+        const rbl = (down || left) ? (down && left ? 0 : r * 0.5) : r;
+        ctx.beginPath();
+        ctx.moveTo(px + rtl, py);
+        ctx.lineTo(px + TILE - rtr, py);
+        if (rtr > 0) ctx.quadraticCurveTo(px + TILE, py, px + TILE, py + rtr);
+        else ctx.lineTo(px + TILE, py);
+        ctx.lineTo(px + TILE, py + TILE - rbr);
+        if (rbr > 0) ctx.quadraticCurveTo(px + TILE, py + TILE, px + TILE - rbr, py + TILE);
+        else ctx.lineTo(px + TILE, py + TILE);
+        ctx.lineTo(px + rbl, py + TILE);
+        if (rbl > 0) ctx.quadraticCurveTo(px, py + TILE, px, py + TILE - rbl);
+        else ctx.lineTo(px, py + TILE);
+        ctx.lineTo(px, py + rtl);
+        if (rtl > 0) ctx.quadraticCurveTo(px, py, px + rtl, py);
+        else ctx.lineTo(px, py);
+        ctx.closePath();
+        ctx.fill();
       }
     }
   }
@@ -129,7 +168,7 @@ function draw() {
     ctx.save();
     ctx.shadowColor = col;
     ctx.shadowBlur = 12;
-    drawAnt(q.x, q.y, q.dir, col, 1, 1, true, q.bobPhase, q.hp);
+    drawAnt(q.x, q.y, q.dir, col, 1, 1, true, q.moving ? q.bobPhase : 0, q.hp);
     ctx.restore();
 
     // Shield indicator

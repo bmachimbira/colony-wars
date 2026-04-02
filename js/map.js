@@ -14,8 +14,8 @@ function generateMap() {
   clearChamber(p1cx, p1cy);
   clearChamber(p2cx, p2cy);
 
-  // Rock obstacles — fill ~25% of the playing field
-  const targetRocks = Math.floor(COLS * ROWS * 0.25);
+  // Rock obstacles — fill ~15% of the playing field
+  const targetRocks = Math.floor(COLS * ROWS * 0.15);
   let rockCount = 0;
   while (rockCount < targetRocks) {
     let rx, ry;
@@ -36,18 +36,33 @@ function generateMap() {
     }
   }
 
-  // Carve tunnel corridor connecting chambers
-  carveTunnel(p1cx, p1cy, p2cx, p2cy);
+  // Carve TWO distinct tunnel corridors connecting chambers
+  carveTunnel(p1cx, p1cy, p2cx, p2cy, 'upper');
+  carveTunnel(p1cx, p1cy, p2cx, p2cy, 'lower');
 
-  // Puddles (4-6)
-  const numPuddles = 4 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < numPuddles; i++) {
-    let px, py;
+  // Water puddles (8-14, placed in clusters of 2-4)
+  const numPuddleClusters = 4 + Math.floor(Math.random() * 4);
+  for (let c = 0; c < numPuddleClusters; c++) {
+    let px, py, attempts = 0;
     do {
       px = 1 + Math.floor(Math.random() * (COLS - 2));
       py = 1 + Math.floor(Math.random() * (ROWS - 2));
-    } while (map[py][px] !== T.DIRT || nearChamber(px, py, p1cx, p1cy) || nearChamber(px, py, p2cx, p2cy));
-    map[py][px] = T.PUDDLE;
+      attempts++;
+    } while (attempts < 100 && (map[py][px] !== T.DIRT || nearChamber(px, py, p1cx, p1cy) || nearChamber(px, py, p2cx, p2cy)));
+    if (attempts < 100) {
+      map[py][px] = T.PUDDLE;
+      // Expand puddle cluster
+      const clusterSize = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < clusterSize; i++) {
+        const wx = px + Math.floor(Math.random() * 3) - 1;
+        const wy = py + Math.floor(Math.random() * 3) - 1;
+        if (wx >= 0 && wx < COLS && wy >= 0 && wy < ROWS && map[wy][wx] === T.DIRT) {
+          if (!nearChamber(wx, wy, p1cx, p1cy) && !nearChamber(wx, wy, p2cx, p2cy)) {
+            map[wy][wx] = T.PUDDLE;
+          }
+        }
+      }
+    }
   }
 
   // Leaf litter (3-5)
@@ -61,9 +76,10 @@ function generateMap() {
     map[ly][lx] = T.LEAF;
   }
 
-  // BFS validation
-  if (!bfsConnected(p1cx, p1cy, p2cx, p2cy)) {
-    carveTunnel(p1cx, p1cy, p2cx, p2cy);
+  // Ensure 2 distinct paths exist — if not, carve additional tunnels
+  if (!hasTwoDistinctPaths(p1cx, p1cy, p2cx, p2cy)) {
+    carveTunnel(p1cx, p1cy, p2cx, p2cy, 'upper');
+    carveTunnel(p1cx, p1cy, p2cx, p2cy, 'lower');
   }
 
   return { p1: { x: p1cx, y: p1cy }, p2: { x: p2cx, y: p2cy } };
@@ -80,14 +96,30 @@ function nearChamber(x, y, cx, cy) {
   return Math.abs(x - cx) <= 2 && Math.abs(y - cy) <= 2;
 }
 
-function carveTunnel(x1, y1, x2, y2) {
+function carveTunnel(x1, y1, x2, y2, bias) {
+  // Bias 'upper' routes via top of map, 'lower' via bottom
+  const midX = Math.floor((x1 + x2) / 2);
+  let midY;
+  if (bias === 'upper') {
+    midY = Math.max(1, Math.floor(Math.min(y1, y2) * 0.3) + Math.floor(Math.random() * 3));
+  } else if (bias === 'lower') {
+    midY = Math.min(ROWS - 2, Math.floor(Math.max(y1, y2) + (ROWS - Math.max(y1, y2)) * 0.7) + Math.floor(Math.random() * 3));
+  } else {
+    midY = Math.floor((y1 + y2) / 2);
+  }
+
+  // Carve from start to midpoint, then midpoint to end
+  carveSegment(x1, y1, midX, midY);
+  carveSegment(midX, midY, x2, y2);
+}
+
+function carveSegment(x1, y1, x2, y2) {
   let x = x1, y = y1;
   while (x !== x2 || y !== y2) {
-    if (map[y][x] === T.DIRT) map[y][x] = T.DUG;
+    if (map[y][x] === T.DIRT || map[y][x] === T.ROCK) map[y][x] = T.DUG;
     if (Math.random() < 0.5) {
-      // Add some width to tunnel
-      if (y-1 >= 0 && map[y-1][x] === T.DIRT && Math.random() < 0.3) map[y-1][x] = T.DUG;
-      if (y+1 < ROWS && map[y+1][x] === T.DIRT && Math.random() < 0.3) map[y+1][x] = T.DUG;
+      if (y-1 >= 0 && (map[y-1][x] === T.DIRT) && Math.random() < 0.3) map[y-1][x] = T.DUG;
+      if (y+1 < ROWS && (map[y+1][x] === T.DIRT) && Math.random() < 0.3) map[y+1][x] = T.DUG;
     }
     if (x !== x2 && (y === y2 || Math.random() < 0.5)) {
       x += x < x2 ? 1 : -1;
@@ -95,7 +127,63 @@ function carveTunnel(x1, y1, x2, y2) {
       y += y < y2 ? 1 : -1;
     }
   }
-  if (map[y][x] === T.DIRT) map[y][x] = T.DUG;
+  if (map[y][x] === T.DIRT || map[y][x] === T.ROCK) map[y][x] = T.DUG;
+}
+
+function hasTwoDistinctPaths(x1, y1, x2, y2) {
+  // Find first path via BFS
+  const path1 = bfsFullPath(x1, y1, x2, y2);
+  if (!path1) return false;
+
+  // Temporarily block the middle section of path1 (not start/end)
+  const blocked = [];
+  for (let i = Math.floor(path1.length * 0.3); i < Math.floor(path1.length * 0.7); i++) {
+    const [bx, by] = path1[i];
+    if (map[by][bx] === T.DUG || map[by][bx] === T.TUNNEL) {
+      blocked.push({ x: bx, y: by, orig: map[by][bx] });
+      map[by][bx] = T.ROCK; // temporarily block
+    }
+  }
+
+  // Check if second path exists
+  const connected = bfsConnected(x1, y1, x2, y2);
+
+  // Restore blocked tiles
+  for (const b of blocked) map[b.y][b.x] = b.orig;
+
+  return connected;
+}
+
+function bfsFullPath(x1, y1, x2, y2) {
+  const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+  const parent = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  const queue = [[x1, y1]];
+  visited[y1][x1] = true;
+  const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+  while (queue.length > 0) {
+    const [cx, cy] = queue.shift();
+    if (cx === x2 && cy === y2) {
+      const path = [[x2, y2]];
+      let px = x2, py = y2;
+      while (parent[py][px]) {
+        [px, py] = parent[py][px];
+        path.push([px, py]);
+      }
+      return path.reverse();
+    }
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !visited[ny][nx]) {
+        const t = map[ny][nx];
+        if (t !== T.ROCK && t !== T.PUDDLE && t !== T.DIRT) {
+          visited[ny][nx] = true;
+          parent[ny][nx] = [cx, cy];
+          queue.push([nx, ny]);
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function bfsConnected(x1, y1, x2, y2) {
