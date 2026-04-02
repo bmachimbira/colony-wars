@@ -25,7 +25,7 @@ const COLORS = {
 const T = { DIRT: 0, ROCK: 1, PUDDLE: 2, LEAF: 3, DUG: 4, TUNNEL: 5 };
 
 // Game states
-const STATE = { TITLE: 0, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4, MATCH_END: 5, PAUSED: 6 };
+const STATE = { NARRATIVE: -1, TITLE: 0, GENERATING: 1, COUNTDOWN: 2, PLAYING: 3, ROUND_END: 4, MATCH_END: 5, PAUSED: 6 };
 
 // Power-up types
 const POWER_TYPES = ['SUGAR', 'RAPID', 'SHIELD', 'MEGA'];

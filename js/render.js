@@ -3,6 +3,11 @@ function draw() {
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, W, H);
 
+  if (gameState === STATE.NARRATIVE) {
+    drawNarrative();
+    return;
+  }
+
   if (gameState === STATE.TITLE) {
     drawTitle();
     return;
@@ -519,6 +524,100 @@ function drawHUD() {
   ctx.fillText('WASD+SPACE', 8, H - 8);
   ctx.textAlign = 'right';
   ctx.fillText('ARROWS+ENTER', W - 8, H - 8);
+}
+
+function drawNarrative() {
+  ctx.fillStyle = '#0E0A05';
+  ctx.fillRect(0, 0, W, H);
+
+  const page = NARRATIVE_PAGES[narrativePage];
+  const fullText = page.lines.join('\n');
+  const visibleText = fullText.substring(0, narrativeCharIndex);
+  const visibleLines = visibleText.split('\n');
+
+  // Subtle vignette
+  const grad = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.7);
+  grad.addColorStop(0, 'rgba(30,20,10,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Page indicator dots
+  ctx.textAlign = 'center';
+  const dotY = H * 0.18;
+  for (let i = 0; i < NARRATIVE_PAGES.length; i++) {
+    ctx.fillStyle = i === narrativePage ? page.color : '#333';
+    ctx.beginPath();
+    const dotX = W / 2 + (i - (NARRATIVE_PAGES.length - 1) / 2) * 18;
+    ctx.arc(dotX, dotY, i === narrativePage ? 5 : 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Title
+  ctx.fillStyle = page.color;
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  const titleY = H * 0.3;
+  ctx.fillText(page.title, W / 2, titleY);
+
+  // Underline
+  const titleWidth = ctx.measureText(page.title).width;
+  ctx.strokeStyle = page.color;
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - titleWidth / 2, titleY + 8);
+  ctx.lineTo(W / 2 + titleWidth / 2, titleY + 8);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Body text with typewriter effect
+  ctx.fillStyle = '#B8A888';
+  ctx.font = '15px monospace';
+  ctx.textAlign = 'center';
+  const lineHeight = 24;
+  const startY = titleY + 50;
+
+  for (let i = 0; i < visibleLines.length; i++) {
+    const line = visibleLines[i];
+    // Color highlights for special lines
+    if (line.includes('[S]') || line.includes('[R]') || line.includes('[A]') || line.includes('[M]')) {
+      ctx.fillStyle = COLORS.moundGold;
+    } else if (line.includes('PLAYER 1')) {
+      ctx.fillStyle = '#AAA';
+    } else {
+      ctx.fillStyle = '#B8A888';
+    }
+    ctx.fillText(line, W / 2, startY + i * lineHeight);
+  }
+
+  // Blinking cursor at end of text
+  if (!narrativePageReady && Math.sin(performance.now() / 300) > 0) {
+    const lastLine = visibleLines[visibleLines.length - 1] || '';
+    const lastLineWidth = ctx.measureText(lastLine).width;
+    const cursorX = W / 2 + lastLineWidth / 2 + 4;
+    const cursorY = startY + (visibleLines.length - 1) * lineHeight;
+    ctx.fillStyle = page.color;
+    ctx.fillRect(cursorX, cursorY - 12, 8, 15);
+  }
+
+  // Bottom prompt
+  if (narrativePageReady) {
+    const blink = Math.sin(performance.now() / 400) > 0;
+    if (blink) {
+      ctx.fillStyle = '#666';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      const isLast = narrativePage >= NARRATIVE_PAGES.length - 1;
+      ctx.fillText(isLast ? 'PRESS ANY KEY TO BEGIN' : 'PRESS ANY KEY TO CONTINUE', W / 2, H * 0.85);
+    }
+  }
+
+  // Skip hint
+  ctx.fillStyle = '#444';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('Press any key to skip', W - 20, H - 15);
 }
 
 function drawTitle() {
