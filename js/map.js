@@ -14,18 +14,25 @@ function generateMap() {
   clearChamber(p1cx, p1cy);
   clearChamber(p2cx, p2cy);
 
-  // Rock clusters (4 clusters of 2-4 rocks)
-  for (let c = 0; c < 4; c++) {
+  // Rock obstacles — fill ~25% of the playing field
+  const targetRocks = Math.floor(COLS * ROWS * 0.25);
+  let rockCount = 0;
+  while (rockCount < targetRocks) {
     let rx, ry;
     do {
       rx = 2 + Math.floor(Math.random() * (COLS - 4));
       ry = 2 + Math.floor(Math.random() * (ROWS - 4));
     } while (nearChamber(rx, ry, p1cx, p1cy) || nearChamber(rx, ry, p2cx, p2cy));
-    const size = 2 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < size; i++) {
-      const ox = rx + Math.floor(Math.random() * 2);
-      const oy = ry + Math.floor(Math.random() * 2);
-      if (ox >= 0 && ox < COLS && oy >= 0 && oy < ROWS) map[oy][ox] = T.ROCK;
+    const size = 5 + Math.floor(Math.random() * 8);
+    for (let i = 0; i < size && rockCount < targetRocks; i++) {
+      const ox = rx + Math.floor(Math.random() * 4) - 1;
+      const oy = ry + Math.floor(Math.random() * 4) - 1;
+      if (ox >= 0 && ox < COLS && oy >= 0 && oy < ROWS && map[oy][ox] !== T.ROCK) {
+        if (!nearChamber(ox, oy, p1cx, p1cy) && !nearChamber(ox, oy, p2cx, p2cy)) {
+          map[oy][ox] = T.ROCK;
+          rockCount++;
+        }
+      }
     }
   }
 

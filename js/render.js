@@ -34,8 +34,9 @@ function draw() {
         // Grain lines
         ctx.strokeStyle = COLORS.dirtBord;
         ctx.beginPath();
-        ctx.moveTo(px + 4, py + 8); ctx.lineTo(px + 12, py + 8);
-        ctx.moveTo(px + 10, py + 16); ctx.lineTo(px + 20, py + 16);
+        ctx.moveTo(px + 5, py + 10); ctx.lineTo(px + 16, py + 10);
+        ctx.moveTo(px + 14, py + 22); ctx.lineTo(px + 27, py + 22);
+        ctx.moveTo(px + 3, py + 17); ctx.lineTo(px + 10, py + 17);
         ctx.stroke();
       } else if (t === T.ROCK) {
         ctx.fillStyle = COLORS.rock;
@@ -44,8 +45,9 @@ function draw() {
         ctx.lineWidth = 2;
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         ctx.fillStyle = COLORS.rockHi;
-        ctx.fillRect(px + 5, py + 5, 6, 4);
-        ctx.fillRect(px + 14, py + 12, 4, 4);
+        ctx.fillRect(px + 6, py + 6, 8, 5);
+        ctx.fillRect(px + 18, py + 16, 6, 5);
+        ctx.fillRect(px + 4, py + 20, 5, 4);
       } else if (t === T.PUDDLE) {
         ctx.fillStyle = COLORS.puddle;
         ctx.fillRect(px, py, TILE, TILE);
@@ -102,12 +104,12 @@ function draw() {
     ctx.globalAlpha = pulse;
     ctx.fillStyle = COLORS.powerUp;
     ctx.beginPath();
-    ctx.arc(px + TILE / 2, py + TILE / 2, 8, 0, Math.PI * 2);
+    ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.35, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
     // Type indicator
     ctx.fillStyle = '#000';
-    ctx.font = '10px monospace';
+    ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'center';
     const label = { SUGAR: 'S', RAPID: 'R', SHIELD: 'A', MEGA: 'M' }[powerUp.type];
     ctx.fillText(label, px + TILE / 2, py + TILE / 2 + 3);
@@ -115,7 +117,7 @@ function draw() {
 
   // Draw soldiers
   for (const s of soldiers) {
-    drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1);
+    drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
   }
 
   // Draw queens
@@ -135,7 +137,7 @@ function draw() {
       ctx.strokeStyle = '#88DDFF';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(q.x * TILE + TILE / 2, q.y * TILE + TILE / 2, 14, 0, Math.PI * 2);
+      ctx.arc(q.x * TILE + TILE / 2, q.y * TILE + TILE / 2, TILE * 0.6, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
@@ -144,7 +146,7 @@ function draw() {
   for (const b of bullets) {
     ctx.fillStyle = '#88FF44';
     ctx.beginPath();
-    ctx.arc(b.x * TILE, b.y * TILE, b.blast >= 3 ? 5 : 3, 0, Math.PI * 2);
+    ctx.arc(b.x * TILE, b.y * TILE, b.blast >= 3 ? 7 : 4, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -191,79 +193,174 @@ function draw() {
 
 function drawAnt(x, y, dir, color, scale, alpha, isQueen, bobPhase, hp) {
   const px = x * TILE + TILE / 2;
-  const py = y * TILE + TILE / 2 + (bobPhase ? Math.sin(bobPhase) * 1.5 : 0);
-  const s = TILE * 0.4 * scale;
+  const py = y * TILE + TILE / 2 + (bobPhase ? Math.sin(bobPhase) * 2 : 0);
+  const s = TILE * 0.45 * scale;
+  const walkPhase = bobPhase || 0;
+  const t = performance.now() / 1000;
 
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(px, py);
 
-  // Rotate based on direction
   const angles = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
   ctx.rotate(angles[dir] || 0);
 
-  // Body segments
+  // ── 6 Animated Legs (3 per side, alternating tripod gait) ──
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isQueen ? 2 : 1.5;
+  ctx.lineCap = 'round';
+  const legPositions = [-0.35, 0.0, 0.35];
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < 3; i++) {
+      const phase = (i % 2 === 0) ? walkPhase : walkPhase + Math.PI;
+      const swing = Math.sin(phase) * 0.25;
+      const hipX = legPositions[i] * s;
+      const hipY = side * s * 0.3;
+      const kneeX = hipX + swing * s * 0.5;
+      const kneeY = side * s * 0.7;
+      const footX = hipX - swing * s * 0.3;
+      const footY = side * s * 1.1;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.quadraticCurveTo(kneeX, kneeY, footX, footY);
+      ctx.stroke();
+    }
+  }
+
+  // ── Body segments with shading ──
   ctx.fillStyle = color;
   // Abdomen
   ctx.beginPath();
-  ctx.ellipse(-s * 0.8, 0, s * 0.5, s * 0.4, 0, 0, Math.PI * 2);
+  ctx.ellipse(-s * 0.85, 0, s * 0.55, s * (isQueen ? 0.5 : 0.4), 0, 0, Math.PI * 2);
   ctx.fill();
-  // Thorax
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.beginPath();
-  ctx.ellipse(0, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(-s * 0.75, -s * 0.15, s * 0.25, s * 0.15, -0.3, 0, Math.PI * 2);
   ctx.fill();
-  // Head
-  ctx.beginPath();
-  ctx.ellipse(s * 0.6, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Legs
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  for (let i = -1; i <= 1; i++) {
-    ctx.beginPath();
-    ctx.moveTo(i * s * 0.3, -s * 0.3);
-    ctx.lineTo(i * s * 0.3 - 2, -s * 0.7);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(i * s * 0.3, s * 0.3);
-    ctx.lineTo(i * s * 0.3 - 2, s * 0.7);
-    ctx.stroke();
+  if (isQueen) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1.5;
+    for (let si = -1; si <= 1; si++) {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.85 + si * s * 0.18, -s * 0.4);
+      ctx.lineTo(-s * 0.85 + si * s * 0.18, s * 0.4);
+      ctx.stroke();
+    }
   }
 
-  // Antennae
+  // Petiole (narrow waist)
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(s * 0.8, -s * 0.2);
-  ctx.lineTo(s * 1.3, -s * 0.6);
-  ctx.moveTo(s * 0.8, s * 0.2);
-  ctx.lineTo(s * 1.3, s * 0.6);
+  ctx.ellipse(-s * 0.25, 0, s * 0.12, s * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Thorax
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(s * 0.1, 0, s * 0.35, s * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(s * 0.15, -s * 0.1, s * 0.18, s * 0.1, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(s * 0.65, 0, s * 0.3, s * 0.28, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(s * 0.75, -s * 0.12, s * 0.08, 0, Math.PI * 2);
+  ctx.arc(s * 0.75, s * 0.12, s * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(s * 0.78, -s * 0.12, s * 0.04, 0, Math.PI * 2);
+  ctx.arc(s * 0.78, s * 0.12, s * 0.04, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mandibles
+  ctx.strokeStyle = isQueen ? '#FFD700' : color;
+  ctx.lineWidth = isQueen ? 2.5 : 1.5;
+  ctx.lineCap = 'round';
+  const mandibleOpen = isQueen ? Math.sin(t * 3) * 0.15 + 0.3 : 0.2;
+  ctx.beginPath();
+  ctx.moveTo(s * 0.9, -s * 0.1);
+  ctx.quadraticCurveTo(s * 1.1, -s * mandibleOpen, s * 1.2, -s * 0.05);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.9, s * 0.1);
+  ctx.quadraticCurveTo(s * 1.1, s * mandibleOpen, s * 1.2, s * 0.05);
   ctx.stroke();
 
+  // ── Antennae (animated, segmented) ──
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isQueen ? 1.8 : 1.2;
+  const antSway1 = Math.sin(t * 4 + 0.5) * 0.15;
+  const antSway2 = Math.sin(t * 4 + 2.5) * 0.15;
+  ctx.beginPath();
+  ctx.moveTo(s * 0.85, -s * 0.2);
+  ctx.quadraticCurveTo(s * 1.1, -s * (0.55 + antSway1), s * 1.4, -s * (0.75 + antSway1));
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(s * 1.4, -s * (0.75 + antSway1), s * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.85, s * 0.2);
+  ctx.quadraticCurveTo(s * 1.1, s * (0.55 + antSway2), s * 1.4, s * (0.75 + antSway2));
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(s * 1.4, s * (0.75 + antSway2), s * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
   if (isQueen) {
-    // Crown/mandibles
+    // Crown (3 points above head)
     ctx.fillStyle = '#FFD700';
+    ctx.strokeStyle = '#DAA520';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(s * 0.9, -s * 0.15);
-    ctx.lineTo(s * 1.1, -s * 0.4);
-    ctx.lineTo(s * 1.0, -s * 0.1);
-    ctx.lineTo(s * 1.2, -s * 0.2);
+    ctx.moveTo(s * 0.45, -s * 0.28);
+    ctx.lineTo(s * 0.5, -s * 0.55);
+    ctx.lineTo(s * 0.6, -s * 0.32);
+    ctx.lineTo(s * 0.65, -s * 0.6);
+    ctx.lineTo(s * 0.75, -s * 0.3);
+    ctx.lineTo(s * 0.8, -s * 0.5);
+    ctx.lineTo(s * 0.85, -s * 0.28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Crown jewel
+    ctx.fillStyle = '#FF4444';
+    ctx.beginPath();
+    ctx.arc(s * 0.65, -s * 0.42, s * 0.05, 0, Math.PI * 2);
     ctx.fill();
 
     // Damage cracks
     if (hp !== undefined && hp < 3) {
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       if (hp <= 2) {
         ctx.beginPath();
-        ctx.moveTo(-s * 0.4, -s * 0.2);
-        ctx.lineTo(-s * 0.1, s * 0.1);
+        ctx.moveTo(-s * 0.5, -s * 0.2);
+        ctx.lineTo(-s * 0.3, 0);
+        ctx.lineTo(-s * 0.1, s * 0.15);
         ctx.stroke();
       }
       if (hp <= 1) {
         ctx.beginPath();
-        ctx.moveTo(s * 0.2, -s * 0.3);
+        ctx.moveTo(s * 0.1, -s * 0.3);
+        ctx.lineTo(s * 0.3, -s * 0.05);
         ctx.lineTo(s * 0.5, s * 0.2);
-        ctx.lineTo(s * 0.3, s * 0.1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(s * 0.2, s * 0.1);
+        ctx.lineTo(s * 0.35, s * 0.3);
         ctx.stroke();
       }
     }

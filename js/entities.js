@@ -303,9 +303,9 @@ function updatePowerUp(dt) {
     powerUp.despawnTimer -= dt;
     if (powerUp.despawnTimer <= 0) {
       powerUp = null;
-      powerUpTimer = 15;
+      powerUpTimer = 5;
     }
-  } else if (powerUpTimer <= 0 && roundTimer > 10) {
+  } else if (powerUpTimer <= 0 && roundTimer > 3) {
     let px, py, attempts = 0;
     do {
       px = Math.floor(Math.random() * COLS);
@@ -317,19 +317,19 @@ function updatePowerUp(dt) {
       powerUp = {
         x: px, y: py,
         type: POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)],
-        despawnTimer: 10,
+        despawnTimer: 15,
       };
     }
-    powerUpTimer = 15;
+    powerUpTimer = 5;
   }
 }
 
 function applyPowerUp(q, pu) {
   q.activePowerUp = pu.type;
   switch (pu.type) {
-    case 'SUGAR': q.powerUpTimer = 8; break;
-    case 'RAPID': q.powerUpTimer = 8; break;
-    case 'SHIELD': break; // lasts until hit or 15s
-    case 'MEGA': q.megaShots = 3; break;
+    case 'SUGAR': q.powerUpTimer = 16; break;
+    case 'RAPID': q.powerUpTimer = 16; break;
+    case 'SHIELD': break; // lasts until hit
+    case 'MEGA': q.megaShots = 6; break;
   }
 }

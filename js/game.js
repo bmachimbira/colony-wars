@@ -94,7 +94,7 @@ function startNewRound() {
   powerUp = null;
   roundTimer = 0;
   moundTimer = 5;
-  powerUpTimer = 15;
+  powerUpTimer = 5;
   waveTimer = 30;
   waveCount = 0;
 

@@ -1,5 +1,5 @@
 // ─── Constants ───────────────────────────────────────────────
-const TILE = 24;
+const TILE = 32;
 const COLS = Math.floor(window.innerWidth / TILE);
 const ROWS = Math.floor(window.innerHeight / TILE);
 const W = COLS * TILE, H = ROWS * TILE;
