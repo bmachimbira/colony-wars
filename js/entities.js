@@ -18,6 +18,7 @@ function fireBullet(q) {
   const t = map[by][bx];
   if (t === T.ROCK || t === T.PUDDLE) return;
 
+  playShoot();
   const speed = 5;
   const blast = q.activePowerUp === 'MEGA' ? 3 : 1;
 
@@ -110,6 +111,7 @@ function updateQueen(q, dt) {
       mound.claimedBy = q.colony;
       mound.soldiersRemaining = 3;
       mound.spawnTimer = 0.5;
+      playMoundClaim();
     }
   }
 
@@ -117,6 +119,7 @@ function updateQueen(q, dt) {
   if (powerUp) {
     if (Math.round(q.x) === powerUp.x && Math.round(q.y) === powerUp.y) {
       applyPowerUp(q, powerUp);
+      playPowerUp();
       powerUp = null;
     }
   }
@@ -158,6 +161,7 @@ function updateBullets(dt) {
         map[ty][tx] = T.DUG;
         spawnParticles(tx, ty, COLORS.dirtBord, 5);
       }
+      playDirtBreak();
       bullets.splice(i, 1);
       continue;
     }
@@ -172,6 +176,7 @@ function updateBullets(dt) {
             q.hp--;
             q.invTimer = 0.5;
           }
+          playHit();
           spawnParticles(Math.round(q.x), Math.round(q.y), q.colony === 'blue' ? COLORS.p1 : COLORS.p2, 8);
           bullets.splice(i, 1);
           break;
@@ -269,6 +274,7 @@ function updateMound(dt) {
           colony: mound.claimedBy, lifetime: 20, pathTimer: 0,
           nextTile: null, shootCooldown: 1,
         });
+        playSoldierSpawn();
         mound.soldiersRemaining--;
         mound.spawnTimer = 2.5;
       }

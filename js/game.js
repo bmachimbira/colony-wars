@@ -13,8 +13,14 @@ function update(dt) {
   }
 
   if (gameState === STATE.COUNTDOWN) {
+    const prevSec = Math.ceil(countdownTimer);
     countdownTimer -= dt;
-    if (countdownTimer <= 0) gameState = STATE.PLAYING;
+    const curSec = Math.ceil(countdownTimer);
+    if (curSec !== prevSec && curSec > 0) playCountdownTick();
+    if (countdownTimer <= 0) {
+      gameState = STATE.PLAYING;
+      playRoundStart();
+    }
     return;
   }
 
@@ -23,6 +29,7 @@ function update(dt) {
     if (roundEndTimer <= 0) {
       if (scores[0] >= 3 || scores[1] >= 3) {
         gameState = STATE.MATCH_END;
+        playMatchWin();
       } else {
         gameState = STATE.GENERATING;
       }
@@ -77,6 +84,7 @@ function update(dt) {
       roundWinner = 1 - i;
       scores[roundWinner]++;
       spawnParticles(queens[i].x, queens[i].y, queens[i].colony === 'blue' ? COLORS.p1 : COLORS.p2, 30);
+      playDeath();
       gameState = STATE.ROUND_END;
       roundEndTimer = 3;
       return;
