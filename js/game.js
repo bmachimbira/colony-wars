@@ -40,6 +40,9 @@ function update(dt) {
   }
 
   if (gameState === STATE.GENERATING) {
+    if (isOnline && !isHost && pendingRoundSeed === null) {
+      return;
+    }
     startNewRound();
     return;
   }
@@ -247,8 +250,11 @@ function startNewRound() {
   waveTimer = 30;
   waveCount = 0;
 
-  // Seed the PRNG — host picks seed, guests use the same one
-  if (!isOnline || isHost) {
+  // Seed the PRNG once per round. Guests wait in GENERATING until this arrives.
+  if (pendingRoundSeed !== null) {
+    seedRandom(pendingRoundSeed);
+    pendingRoundSeed = null;
+  } else if (!isOnline || isHost) {
     const seed = Date.now() ^ (Math.random() * 0xFFFFFFFF);
     seedRandom(seed);
     // Broadcast seed to all guests
@@ -258,7 +264,6 @@ function startNewRound() {
       }
     }
   }
-  // If guest, seed was already set via 'seed' message before GENERATING
 
   // Generate per-tile random seeds for visual variation
   tileSeed = [];
