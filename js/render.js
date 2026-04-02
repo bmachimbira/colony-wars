@@ -52,10 +52,6 @@ function draw() {
         const r = 0x5C + bright, g = 0x40 + Math.floor(bright * 0.6), b = 0x23 + Math.floor(bright * 0.3);
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.fillRect(px, py, TILE, TILE);
-        // Border
-        ctx.strokeStyle = COLORS.dirtBord;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
         // Randomized grain lines using seed (scaled to tile size)
         ctx.strokeStyle = COLORS.dirtBord;
         ctx.lineWidth = 0.8;
