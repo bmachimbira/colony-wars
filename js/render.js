@@ -403,6 +403,42 @@ function draw() {
 
   }
 
+  // Draw HP bars near queens
+  for (const q of queens) {
+    if (q.dead) continue;
+    const qpx = q.x * TILE + TILE / 2;
+    const qpy = q.y * TILE - TILE * 0.4;
+    const barW = TILE * 1.2;
+    const barH = 4;
+    const barX = qpx - barW / 2;
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(barX - 1, qpy - 1, barW + 2, barH + 2);
+    // HP fill
+    const hpRatio = Math.max(0, q.hp / 3);
+    ctx.fillStyle = hpRatio > 0.6 ? '#44CC44' : hpRatio > 0.3 ? '#CCAA22' : '#CC3333';
+    ctx.fillRect(barX, qpy, barW * hpRatio, barH);
+    // Player label
+    ctx.fillStyle = q.color;
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(q.colony.toUpperCase(), qpx, qpy - 4);
+  }
+
+  // Draw floating texts
+  for (const ft of floatingTexts) {
+    const alpha = ft.life / ft.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.text, ft.x, ft.y);
+    // Drop shadow for readability
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+  }
+  ctx.globalAlpha = 1;
+
   // Draw droppings
   for (const d of droppings) {
     const dx = d.x * TILE + TILE / 2, dy = d.y * TILE + TILE / 2;

@@ -150,6 +150,7 @@ let tileSeed = [];
 let screenShake = 0;
 let dustMotes = [];
 let droppings = [];
+let floatingTexts = []; // { x, y, text, color, life, maxLife }
 
 // Character selection state (up to 4 players)
 let charSelect = [
