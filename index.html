@@ -23,10 +23,12 @@ canvas {
 </style>
 </head>
 <body>
-<canvas id="game" width="672" height="528"></canvas>
+<canvas id="game"></canvas>
 <script>
 // ─── Constants ───────────────────────────────────────────────
-const COLS = 28, ROWS = 22, TILE = 24;
+const TILE = 24;
+const COLS = Math.floor(window.innerWidth / TILE);
+const ROWS = Math.floor(window.innerHeight / TILE);
 const W = COLS * TILE, H = ROWS * TILE;
 const COLORS = {
   bg:       '#2A1E10',
@@ -51,6 +53,8 @@ const T = { DIRT: 0, ROCK: 1, PUDDLE: 2, LEAF: 3, DUG: 4, TUNNEL: 5 };
 
 // ─── Canvas ──────────────────────────────────────────────────
 const canvas = document.getElementById('game');
+canvas.width = W;
+canvas.height = H;
 const ctx = canvas.getContext('2d');
 
 // ─── Input ───────────────────────────────────────────────────
@@ -208,7 +212,8 @@ function createQueen(x, y, colony, controls) {
 function fireBullet(q) {
   const dx = { left: -1, right: 1, up: 0, down: 0 }[q.dir];
   const dy = { left: 0, right: 0, up: -1, down: 1 }[q.dir];
-  const bx = q.x + dx, by = q.y + dy;
+  const qx = Math.round(q.x), qy = Math.round(q.y);
+  const bx = qx + dx, by = qy + dy;
   if (bx < 0 || bx >= COLS || by < 0 || by >= ROWS) return;
   const t = map[by][bx];
   if (t === T.ROCK || t === T.PUDDLE) return;
@@ -1054,12 +1059,14 @@ function drawMatchEnd() {
 // ─── Game Loop ───────────────────────────────────────────────
 let lastTime = 0;
 function gameLoop(time) {
-  const dt = Math.min((time - lastTime) / 1000, 0.05);
-  lastTime = time;
-
-  update(dt);
-  draw();
-
+  try {
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+    update(dt);
+    draw();
+  } catch (e) {
+    console.error('Game loop error:', e);
+  }
   requestAnimationFrame(gameLoop);
 }
 
