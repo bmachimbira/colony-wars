@@ -185,6 +185,29 @@ function playSoldierSpawn() {
   osc.stop(t + 0.1);
 }
 
+function playWalk() {
+  const t = audioCtx.currentTime;
+  // Tiny click — ant footsteps on dirt
+  const bufferSize = Math.floor(audioCtx.sampleRate * 0.02);
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+  }
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = 2000;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.06, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(masterGain);
+  noise.start(t);
+}
+
 function playMatchWin() {
   const t = audioCtx.currentTime;
   // Victory fanfare — ascending notes

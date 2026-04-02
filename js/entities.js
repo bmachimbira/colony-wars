@@ -3,7 +3,7 @@ function createQueen(x, y, colony, controls) {
   return {
     x, y, dir: 'right', hp: 3, speed: 3, colony,
     controls, canShoot: true, shootCooldown: 0,
-    bobPhase: 0, moving: false, invTimer: 0,
+    bobPhase: 0, moving: false, invTimer: 0, walkSoundTimer: 0,
     activePowerUp: null, powerUpTimer: 0, megaShots: 0,
   };
 }
@@ -65,7 +65,16 @@ function updateQueen(q, dt) {
   if (keys[c.right]) { mx = 1; q.dir = 'right'; }
 
   q.moving = mx !== 0 || my !== 0;
-  if (q.moving) q.bobPhase += dt * 10;
+  if (q.moving) {
+    q.bobPhase += dt * 10;
+    q.walkSoundTimer -= dt;
+    if (q.walkSoundTimer <= 0) {
+      playWalk();
+      q.walkSoundTimer = 0.15;
+    }
+  } else {
+    q.walkSoundTimer = 0;
+  }
 
   const speed = q.activePowerUp === 'SUGAR' ? q.speed * 2 : q.speed;
 
