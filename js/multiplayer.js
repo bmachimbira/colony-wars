@@ -174,21 +174,64 @@ function mpSetStatus(id, text) {
   if (el) el.textContent = text;
 }
 
-// ─── Host ────────────────────────────────────────────────────
-function mpHost(steps) {
-  roomCode = generateRoomCode();
-  isHost = true;
-  connectionState = 'waiting';
-  mpShowStep(steps, 'host');
+function clearRemoteKeysForSlot(slot) {
+  const numericSlot = Number(slot);
+  const controls = PLAYER_CONTROLS[numericSlot];
+  if (controls) {
+    for (const code of Object.values(controls)) keys[code] = false;
+  }
+  delete remoteKeysBySlot[numericSlot];
+}
 
-  const codeEl = document.getElementById('mp-room-code');
-  if (codeEl) codeEl.textContent = roomCode;
-  mpSetStatus('mp-host-status', 'Connecting to signaling...');
+function clearAllRemoteKeys() {
+  for (const slot of Object.keys(remoteKeysBySlot)) {
+    clearRemoteKeysForSlot(slot);
+  }
+  remoteKeysBySlot = {};
+}
 
+function syncHostLobbyUI(steps) {
+  let startBtn = document.getElementById('mp-start-btn');
+
+  if (onlinePlayerCount <= 1) {
+    if (startBtn) startBtn.remove();
+    mpSetStatus('mp-host-status', 'Room open. Waiting for players... (1/4)');
+    return;
+  }
+
+  mpSetStatus('mp-host-status', 'Players: ' + onlinePlayerCount + '/4. Press START GAME when ready.');
+
+  if (!startBtn) {
+    startBtn = document.createElement('button');
+    startBtn.id = 'mp-start-btn';
+    Object.assign(startBtn.style, {
+      background: '#30A830', color: '#fff', border: 'none', padding: '12px 24px',
+      fontFamily: 'monospace', fontSize: '16px', cursor: 'pointer', margin: '12px',
+      borderRadius: '4px', fontWeight: 'bold',
+    });
+    startBtn.addEventListener('click', () => {
+      const seed = Date.now() ^ (Math.random() * 0xFFFFFFFF);
+      pendingRoundSeed = seed;
+      seedRandom(seed);
+      for (const pc of peerConns) {
+        try { pc.conn.send({ type: 'seed', seed }); } catch (e) {}
+        try { pc.conn.send({ type: 'start', playerCount: onlinePlayerCount }); } catch (e) {}
+      }
+      closeMultiplayerMenu();
+      playerCount = onlinePlayerCount;
+      gameState = STATE.GENERATING;
+    });
+    steps.host.appendChild(startBtn);
+  }
+
+  startBtn.textContent = 'START GAME (' + onlinePlayerCount + ' players)';
+}
+
+function createHostPeer(steps, codeEl) {
   peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
 
   peer.on('open', () => {
-    mpSetStatus('mp-host-status', 'Room open. Waiting for players... (1/4)');
+    syncHostLobbyUI(steps);
   });
 
   peer.on('connection', (conn) => {
@@ -202,25 +245,30 @@ function mpHost(steps) {
 
   peer.on('error', (err) => {
     if (err.type === 'unavailable-id') {
-      // Code collision — try another
-      peer.destroy();
+      try { peer.destroy(); } catch (e) {}
       roomCode = generateRoomCode();
       if (codeEl) codeEl.textContent = roomCode;
       mpSetStatus('mp-host-status', 'Code taken, trying ' + roomCode + '...');
-      peer = new Peer(PEER_PREFIX + roomCode, { debug: 0 });
-      peer.on('open', () => mpSetStatus('mp-host-status', 'Room open. Waiting for players... (1/4)'));
-      peer.on('connection', (conn) => {
-        const slot = peerConns.length + 1;
-        if (slot > 3) { conn.close(); return; }
-        peerConns.push({ conn, slot });
-        onlinePlayerCount = peerConns.length + 1;
-        playerCount = onlinePlayerCount;
-        setupHostConnection(conn, slot, steps);
-      });
-    } else {
-      mpSetStatus('mp-host-status', 'Error: ' + err.type);
+      createHostPeer(steps, codeEl);
+      return;
     }
+
+    mpSetStatus('mp-host-status', 'Error: ' + err.type);
   });
+}
+
+// ─── Host ────────────────────────────────────────────────────
+function mpHost(steps) {
+  roomCode = generateRoomCode();
+  isHost = true;
+  connectionState = 'waiting';
+  mpShowStep(steps, 'host');
+
+  const codeEl = document.getElementById('mp-room-code');
+  if (codeEl) codeEl.textContent = roomCode;
+  mpSetStatus('mp-host-status', 'Connecting to signaling...');
+
+  createHostPeer(steps, codeEl);
 }
 
 // ─── Join ────────────────────────────────────────────────────
@@ -261,38 +309,7 @@ function setupHostConnection(conn, slot, steps) {
     isOnline = true;
     // Tell the guest their slot
     conn.send({ type: 'slot', slot });
-    mpSetStatus('mp-host-status', 'Players: ' + onlinePlayerCount + '/4. Press START GAME when ready.');
-
-    // Show start button after first player joins
-    let startBtn = document.getElementById('mp-start-btn');
-    if (!startBtn) {
-      startBtn = document.createElement('button');
-      startBtn.id = 'mp-start-btn';
-      startBtn.textContent = 'START GAME (' + onlinePlayerCount + ' players)';
-      Object.assign(startBtn.style, {
-        background: '#30A830', color: '#fff', border: 'none', padding: '12px 24px',
-        fontFamily: 'monospace', fontSize: '16px', cursor: 'pointer', margin: '12px',
-        borderRadius: '4px', fontWeight: 'bold',
-      });
-      startBtn.addEventListener('click', () => {
-        // Pre-seed so host and guests share the same seed
-        const seed = Date.now() ^ (Math.random() * 0xFFFFFFFF);
-        seedRandom(seed);
-        // Broadcast seed + start to all guests
-        for (const pc of peerConns) {
-          try { pc.conn.send({ type: 'seed', seed }); } catch (e) {}
-          try { pc.conn.send({ type: 'start', playerCount: onlinePlayerCount }); } catch (e) {}
-        }
-        closeMultiplayerMenu();
-        playerCount = onlinePlayerCount;
-        gameState = STATE.GENERATING;
-      });
-      // Insert before cancel button
-      const hostStep = steps.host;
-      hostStep.appendChild(startBtn);
-    } else {
-      startBtn.textContent = 'START GAME (' + onlinePlayerCount + ' players)';
-    }
+    syncHostLobbyUI(steps);
   });
 
   conn.on('data', (data) => {
@@ -309,8 +326,14 @@ function setupHostConnection(conn, slot, steps) {
 
   conn.on('close', () => {
     console.log('Player', slot + 1, 'disconnected');
+    clearRemoteKeysForSlot(slot);
     peerConns = peerConns.filter(pc => pc.slot !== slot);
     onlinePlayerCount = peerConns.length + 1;
+    isOnline = peerConns.length > 0;
+    for (const pc of peerConns) {
+      try { pc.conn.send({ type: 'player-left', slot }); } catch (e) {}
+    }
+    syncHostLobbyUI(steps);
   });
 }
 
@@ -334,7 +357,10 @@ function setupGuestConnection(conn, steps) {
     } else if (data && data.type === 'relay') {
       // Another guest's input relayed through host
       remoteKeysBySlot[data.slot] = data.keys;
+    } else if (data && data.type === 'player-left') {
+      clearRemoteKeysForSlot(data.slot);
     } else if (data && data.type === 'seed') {
+      pendingRoundSeed = data.seed;
       seedRandom(data.seed);
     } else if (data && data.type === 'start') {
       playerCount = data.playerCount;
@@ -345,20 +371,27 @@ function setupGuestConnection(conn, steps) {
 
   conn.on('close', () => {
     console.log('Disconnected from host');
+    clearAllRemoteKeys();
+    peerConn = null;
     isOnline = false;
     connectionState = 'disconnected';
   });
 }
 
 function mpDisconnect(steps) {
+  clearAllRemoteKeys();
   for (const pc of peerConns) { try { pc.conn.close(); } catch (e) {} }
   peerConns = [];
   if (peerConn) { peerConn.close(); peerConn = null; }
   if (peer) { peer.destroy(); peer = null; }
+  isHost = false;
   isOnline = false;
   connectionState = 'disconnected';
   onlinePlayerCount = 1;
-  remoteKeysBySlot = {};
+  roomCode = '';
+  myPlayerSlot = 0;
+  playerCount = 2;
+  pendingRoundSeed = null;
   mpShowStep(steps, 'menu');
 }
 

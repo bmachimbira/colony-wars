@@ -6,13 +6,18 @@ const ctx = canvas.getContext('2d');
 
 // ─── Input ───────────────────────────────────────────────────
 const keys = {};
+const keyboardKeys = {};
 window.addEventListener('keydown', e => {
   // Don't intercept keys when typing in an input/textarea (multiplayer UI)
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  keyboardKeys[e.code] = true;
   keys[e.code] = true;
   e.preventDefault();
 });
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('keyup', e => {
+  keyboardKeys[e.code] = false;
+  keys[e.code] = false;
+});
 
 // ─── Game State ──────────────────────────────────────────────
 let gameState = localStorage.getItem('colonyClash_introSeen') ? STATE.TITLE : STATE.NARRATIVE;
@@ -168,6 +173,7 @@ let lastDugTime = [];           // 2D array tracking when each tile was last dug
 // ─── Fog of War ─────────────────────────────────────────────
 let fogExplored = [];           // fogExplored[y][x] = true if any player has seen it
 let fogVisible = [];            // fogVisible[y][x] = true if currently in vision
+let pendingRoundSeed = null;
 
 // Character selection state (up to 4 players)
 let charSelect = [

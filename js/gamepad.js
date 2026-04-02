@@ -24,14 +24,32 @@ const prevButtons = [{}, {}];
 // Track previous direction states for edge detection in menus
 const prevDirs = [{ up: false, down: false, left: false, right: false }, { up: false, down: false, left: false, right: false }];
 
+function syncPadKey(code, pressed) {
+  if (!code) return;
+  keys[code] = !!pressed || !!keyboardKeys[code];
+}
+
+function resetPadState(gi, map) {
+  syncPadKey(map.up, false);
+  syncPadKey(map.down, false);
+  syncPadKey(map.left, false);
+  syncPadKey(map.right, false);
+  syncPadKey(map.shoot, false);
+  syncPadKey(map.special, false);
+  prevButtons[gi] = {};
+  prevDirs[gi] = { up: false, down: false, left: false, right: false };
+}
+
 function pollGamepads() {
   const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
 
   for (let gi = 0; gi < 2; gi++) {
-    const gp = gamepads[gi];
-    if (!gp) continue;
-
     const map = GAMEPAD_MAPS[gi];
+    const gp = gamepads[gi];
+    if (!gp) {
+      resetPadState(gi, map);
+      continue;
+    }
 
     // ── D-pad (buttons 12-15) ──
     const dpadUp = gp.buttons[12] && gp.buttons[12].pressed;
@@ -56,10 +74,10 @@ function pollGamepads() {
     // In char select, only use edge-detected keys — skip raw continuous updates
     const inMenu = (typeof gameState !== 'undefined' && typeof STATE !== 'undefined' && gameState === STATE.CHAR_SELECT);
     if (!inMenu) {
-      keys[map.up] = dirUp || (keys[map.up] && !isGamepadKey(map.up));
-      keys[map.down] = dirDown || (keys[map.down] && !isGamepadKey(map.down));
-      keys[map.left] = dirLeft || (keys[map.left] && !isGamepadKey(map.left));
-      keys[map.right] = dirRight || (keys[map.right] && !isGamepadKey(map.right));
+      syncPadKey(map.up, dirUp);
+      syncPadKey(map.down, dirDown);
+      syncPadKey(map.left, dirLeft);
+      syncPadKey(map.right, dirRight);
     }
 
     // ── Edge-detected menu keys (only fire on fresh press, for char select) ──
@@ -76,12 +94,12 @@ function pollGamepads() {
     const shootPressed = (gp.buttons[0] && gp.buttons[0].pressed) ||
                          (gp.buttons[5] && gp.buttons[5].pressed) ||
                          (gp.buttons[7] && gp.buttons[7].pressed);
-    keys[map.shoot] = shootPressed || (keys[map.shoot] && !isGamepadKey(map.shoot));
+    syncPadKey(map.shoot, shootPressed);
 
     // ── Special: X (2), LB (4) ──
     const specialPressed = (gp.buttons[2] && gp.buttons[2].pressed) ||
                            (gp.buttons[4] && gp.buttons[4].pressed);
-    keys[map.special] = specialPressed || (keys[map.special] && !isGamepadKey(map.special));
+    syncPadKey(map.special, specialPressed);
 
     // ── Start button (9) for menu navigation ──
     if (gp.buttons[9] && gp.buttons[9].pressed && !prevButtons[gi].start) {
@@ -93,15 +111,6 @@ function pollGamepads() {
   }
 }
 
-// Track which keys are currently being driven by gamepad
-// so keyboard presses don't get overwritten
-const gamepadDrivenKeys = new Set();
-
-function isGamepadKey(code) {
-  // Check if this key code belongs to a gamepad mapping
-  return GAMEPAD_MAPS.some(m => Object.values(m).includes(code));
-}
-
 // ── Connection events ──
 window.addEventListener('gamepadconnected', (e) => {
   console.log(`Gamepad ${e.gamepad.index} connected: ${e.gamepad.id}`);
@@ -111,9 +120,6 @@ window.addEventListener('gamepaddisconnected', (e) => {
   console.log(`Gamepad ${e.gamepad.index} disconnected`);
   // Clear keys for this gamepad
   if (e.gamepad.index < 2) {
-    const map = GAMEPAD_MAPS[e.gamepad.index];
-    for (const key of Object.values(map)) {
-      keys[key] = false;
-    }
+    resetPadState(e.gamepad.index, GAMEPAD_MAPS[e.gamepad.index]);
   }
 });
