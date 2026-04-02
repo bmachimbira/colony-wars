@@ -51,81 +51,84 @@ function draw() {
         ctx.strokeStyle = COLORS.dirtBord;
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
-        // Randomized grain lines using seed
+        // Randomized grain lines using seed (scaled to tile size)
         ctx.strokeStyle = COLORS.dirtBord;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        const ox = seed * 8, oy = seed * 6;
-        ctx.moveTo(px + 3 + ox, py + 8 + oy); ctx.lineTo(px + 14 + ox, py + 8 + oy);
-        ctx.moveTo(px + 10 - ox, py + 20 - oy); ctx.lineTo(px + 25 - ox, py + 20 - oy);
-        ctx.moveTo(px + 2 + oy, py + 15 + ox); ctx.lineTo(px + 9 + oy, py + 15 + ox);
+        const S = TILE / 32; // scale factor relative to base 32px
+        const ox = seed * 8 * S, oy = seed * 6 * S;
+        ctx.moveTo(px + 3*S + ox, py + 8*S + oy); ctx.lineTo(px + 14*S + ox, py + 8*S + oy);
+        ctx.moveTo(px + 10*S - ox, py + 20*S - oy); ctx.lineTo(px + 25*S - ox, py + 20*S - oy);
+        ctx.moveTo(px + 2*S + oy, py + 15*S + ox); ctx.lineTo(px + 9*S + oy, py + 15*S + ox);
         ctx.stroke();
         // Pebble dots on ~25% of tiles
         if (seed > 0.75) {
           ctx.fillStyle = 'rgba(100,80,55,0.6)';
           ctx.beginPath();
-          ctx.arc(px + 10 + seed * 12, py + 12 + seed * 8, 1.5, 0, Math.PI * 2);
+          ctx.arc(px + (10 + seed * 12) * S, py + (12 + seed * 8) * S, 1.5 * S, 0, Math.PI * 2);
           ctx.fill();
           if (seed > 0.88) {
             ctx.beginPath();
-            ctx.arc(px + 22 - seed * 6, py + 24 - seed * 4, 1, 0, Math.PI * 2);
+            ctx.arc(px + (22 - seed * 6) * S, py + (24 - seed * 4) * S, 1 * S, 0, Math.PI * 2);
             ctx.fill();
           }
         }
       } else if (t === T.ROCK) {
+        const S = TILE / 32;
         // Base with subtle per-tile variation
         const rb = Math.floor(seed * 16) - 8;
         ctx.fillStyle = `rgb(${0x6B + rb},${0x6B + rb},${0x6B + rb})`;
         ctx.fillRect(px, py, TILE, TILE);
         // Shadow bevel (bottom-right darker)
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(px + TILE - 4, py + 4, 4, TILE - 4);
-        ctx.fillRect(px + 4, py + TILE - 4, TILE - 4, 4);
+        ctx.fillRect(px + TILE - 4*S, py + 4*S, 4*S, TILE - 4*S);
+        ctx.fillRect(px + 4*S, py + TILE - 4*S, TILE - 4*S, 4*S);
         // Light bevel (top-left lighter)
         ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        ctx.fillRect(px, py, TILE - 4, 3);
-        ctx.fillRect(px, py, 3, TILE - 4);
+        ctx.fillRect(px, py, TILE - 4*S, 3*S);
+        ctx.fillRect(px, py, 3*S, TILE - 4*S);
         // Border
         ctx.strokeStyle = '#555';
         ctx.lineWidth = 2;
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         // Seed-based highlight positions
-        const hx1 = 4 + Math.floor(seed * 10), hy1 = 4 + Math.floor(seed * 8);
-        const hx2 = 14 + Math.floor(seed * 8), hy2 = 14 + Math.floor(seed * 6);
+        const hx1 = (4 + Math.floor(seed * 10)) * S, hy1 = (4 + Math.floor(seed * 8)) * S;
+        const hx2 = (14 + Math.floor(seed * 8)) * S, hy2 = (14 + Math.floor(seed * 6)) * S;
         ctx.fillStyle = COLORS.rockHi;
-        ctx.fillRect(px + hx1, py + hy1, 7, 4);
-        ctx.fillRect(px + hx2, py + hy2, 5, 4);
+        ctx.fillRect(px + hx1, py + hy1, 7*S, 4*S);
+        ctx.fillRect(px + hx2, py + hy2, 5*S, 4*S);
         // Crack lines on ~30% of rocks
         if (seed > 0.7) {
           ctx.strokeStyle = 'rgba(40,40,40,0.5)';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(px + 8 + seed * 10, py + 4);
-          ctx.lineTo(px + 12 + seed * 6, py + 14);
-          ctx.lineTo(px + 10 + seed * 8, py + 24);
+          ctx.moveTo(px + (8 + seed * 10) * S, py + 4*S);
+          ctx.lineTo(px + (12 + seed * 6) * S, py + 14*S);
+          ctx.lineTo(px + (10 + seed * 8) * S, py + 24*S);
           ctx.stroke();
         }
       } else if (t === T.PUDDLE) {
+        const S = TILE / 32;
         ctx.fillStyle = COLORS.puddle;
         ctx.fillRect(px, py, TILE, TILE);
         // Animated dual wave lines
         ctx.strokeStyle = '#4080D0';
         ctx.lineWidth = 1;
-        const waveOff = Math.sin(now / 800 + seed * Math.PI * 2) * 3;
-        const waveOff2 = Math.sin(now / 600 + seed * Math.PI * 4) * 2;
+        const waveOff = Math.sin(now / 800 + seed * Math.PI * 2) * 3 * S;
+        const waveOff2 = Math.sin(now / 600 + seed * Math.PI * 4) * 2 * S;
         ctx.beginPath();
-        ctx.moveTo(px + 2, py + 10 + waveOff);
-        ctx.quadraticCurveTo(px + 12, py + 6 + waveOff, px + 22, py + 10 + waveOff);
+        ctx.moveTo(px + 2*S, py + 10*S + waveOff);
+        ctx.quadraticCurveTo(px + 12*S, py + 6*S + waveOff, px + 22*S, py + 10*S + waveOff);
         ctx.stroke();
         ctx.strokeStyle = 'rgba(100,160,230,0.5)';
         ctx.beginPath();
-        ctx.moveTo(px + 5, py + 18 + waveOff2);
-        ctx.quadraticCurveTo(px + 16, py + 22 + waveOff2, px + 28, py + 18 + waveOff2);
+        ctx.moveTo(px + 5*S, py + 18*S + waveOff2);
+        ctx.quadraticCurveTo(px + 16*S, py + 22*S + waveOff2, px + 28*S, py + 18*S + waveOff2);
         ctx.stroke();
         // Subtle shimmer highlight
         ctx.fillStyle = 'rgba(150,200,255,0.15)';
         ctx.beginPath();
-        ctx.ellipse(px + 10 + waveOff, py + 14, 4, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(px + 10*S + waveOff, py + 14*S, 4*S, 2*S, 0, 0, Math.PI * 2);
         ctx.fill();
       } else if (t === T.LEAF) {
         ctx.fillStyle = COLORS.dug;
