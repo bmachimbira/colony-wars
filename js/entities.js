@@ -53,6 +53,17 @@ function fireBullet(q) {
   }
 }
 
+// ─── Floating Text ───────────────────────────────────────────
+function spawnFloatingText(x, y, text, color) {
+  floatingTexts.push({
+    x: x * TILE + TILE / 2,
+    y: y * TILE,
+    text, color,
+    life: 1.5,
+    maxLife: 1.5,
+  });
+}
+
 // ─── Particles ───────────────────────────────────────────────
 function spawnParticles(x, y, color, count, type) {
   if (particles.length >= PARTICLE_CAP) return;
@@ -201,14 +212,21 @@ function updateQueen(q, dt) {
       m.soldiersRemaining = 3;
       m.spawnTimer = 0.5;
       playMoundClaim();
+      spawnFloatingText(q.x, q.y, 'MOUND CLAIMED!', '#E8C840');
+      announce('Mound claimed!');
     }
   }
 
   // Check power-up collection
   for (let pi = powerUps.length - 1; pi >= 0; pi--) {
     if (Math.round(q.x) === powerUps[pi].x && Math.round(q.y) === powerUps[pi].y) {
+      const puType = powerUps[pi].type;
       applyPowerUp(q, powerUps[pi]);
       playPowerUp();
+      const puName = POWER_UP_NAMES[puType] || puType;
+      const puColor = (typeof POWER_COLORS !== 'undefined' && POWER_COLORS[puType]) || '#E8C840';
+      spawnFloatingText(q.x, q.y, puName, puColor);
+      announce(puName);
       powerUps.splice(pi, 1);
     }
   }
@@ -274,10 +292,13 @@ function updateBullets(dt) {
           }
           if (q.activePowerUp === 'SHIELD') {
             q.activePowerUp = null;
+            spawnFloatingText(q.x, q.y, 'BLOCKED!', '#44DDFF');
           } else {
             q.hp--;
             q.invTimer = 0.5;
             screenShake = q.hp <= 0 ? 12 : 6;
+            spawnFloatingText(q.x, q.y, '-1 HP', '#FF4444');
+            if (q.hp <= 1 && q.hp > 0) announce('Critical health!');
           }
           playHit();
           spawnParticles(Math.round(q.x), Math.round(q.y), q.color, 8);
@@ -434,6 +455,8 @@ function updateMound(dt) {
     if (attempts < 100) {
       mounds.push({ x: mx, y: my, state: 'ACTIVE', claimedBy: null, soldiersRemaining: 0, spawnTimer: 0, activeTimer: 10 });
       playMoundAppear();
+      spawnFloatingText(mx, my, 'SPAWN MOUND!', '#E8C840');
+      announce('Spawn mound appeared!');
     }
     moundTimer = 1 + gameRandom() * 1;
   }
@@ -517,6 +540,8 @@ function updateWorms(dt) {
       if (w.x === qx && w.y === qy && canWalk(qx, qy)) {
         q.hp++;
         spawnParticles(w.x, w.y, '#D4856A', 8);
+        spawnFloatingText(q.x, q.y, 'WORM +1 HP', '#D4856A');
+        announce('Worm devoured!');
         worms.splice(i, 1);
       }
     }

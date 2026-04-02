@@ -117,6 +117,13 @@ function update(dt) {
     if (p.life <= 0) particles.splice(i, 1);
   }
 
+  // Update floating texts
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    floatingTexts[i].y -= 30 * dt;
+    floatingTexts[i].life -= dt;
+    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+  }
+
   // Update soldiers
   updateSoldiers(dt);
 
@@ -208,6 +215,7 @@ function startNewRound() {
   const spawns = generateMap();
 
   droppings = [];
+  floatingTexts = [];
   const defaultColors = ['#3066C8', '#C83030', '#30A830', '#C8A030'];
   queens = [];
   for (let i = 0; i < playerCount; i++) {

@@ -13,6 +13,42 @@ const masterGain = audioCtx.createGain();
 masterGain.gain.value = 0.3;
 masterGain.connect(audioCtx.destination);
 
+// ─── Voice Announcements (Web Speech API) ────────────────────
+const VOICE_ENABLED = 'speechSynthesis' in window;
+let voiceQueue = [];
+let voiceSpeaking = false;
+
+function announce(text) {
+  if (!VOICE_ENABLED) return;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.3;
+  utter.pitch = 0.8;
+  utter.volume = 0.7;
+  // Try to use a deep/dramatic voice
+  const voices = speechSynthesis.getVoices();
+  const preferred = voices.find(v => v.name.includes('Daniel') || v.name.includes('Alex') || v.name.includes('Google UK English Male'));
+  if (preferred) utter.voice = preferred;
+  utter.onend = () => { voiceSpeaking = false; processVoiceQueue(); };
+  voiceQueue.push(utter);
+  processVoiceQueue();
+}
+
+function processVoiceQueue() {
+  if (voiceSpeaking || voiceQueue.length === 0) return;
+  // Only keep the latest announcement to avoid queue buildup
+  const utter = voiceQueue.pop();
+  voiceQueue = [];
+  voiceSpeaking = true;
+  speechSynthesis.speak(utter);
+}
+
+const POWER_UP_NAMES = {
+  SUGAR: 'Sugar Rush!',
+  RAPID: 'Rapid Fire!',
+  SHIELD: 'Shield Up!',
+  MEGA: 'Mega Acid!',
+};
+
 // ─── Sound Effects ───────────────────────────────────────────
 
 function playShoot() {
