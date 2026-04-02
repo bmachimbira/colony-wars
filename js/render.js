@@ -401,15 +401,6 @@ function draw() {
       ctx.globalAlpha = 1;
     }
 
-    // Special uses indicator (small dots)
-    if (q.specialUses > 0) {
-      for (let si = 0; si < q.specialUses; si++) {
-        ctx.fillStyle = '#FFDD44';
-        ctx.beginPath();
-        ctx.arc(q.x * TILE + TILE / 2 - 6 + si * 6, q.y * TILE - 4, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
   }
 
   // Draw droppings
@@ -806,93 +797,110 @@ function drawHeart(cx, cy, size, filled) {
 }
 
 function drawHUD() {
-  const panelAlpha = 0.35;
+  const panelAlpha = 0.5;
 
   // P1 panel (left)
   ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
-  roundRect(4, 4, 140, 22, 6);
+  roundRect(4, 4, 200, 50, 8);
   ctx.fill();
 
-  // P1 label
-  ctx.font = 'bold 13px monospace';
+  // P1 label + character type
+  ctx.font = 'bold 16px monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = queens[0].color;
-  ctx.fillText('P1 ' + queens[0].charType, 10, 19);
+  ctx.fillText('P1 ' + queens[0].charType, 12, 22);
 
   // P1 hearts
   for (let i = 0; i < Math.max(3, queens[0].hp); i++) {
     ctx.fillStyle = i < queens[0].hp ? queens[0].color : 'rgba(100,100,100,0.4)';
     ctx.strokeStyle = i < queens[0].hp ? queens[0].color : 'rgba(100,100,100,0.4)';
     ctx.lineWidth = 1;
-    drawHeart(80 + i * 16, 8, 6, i < queens[0].hp);
+    drawHeart(12 + i * 18, 30, 7, i < queens[0].hp);
   }
 
-  // P1 special uses
-  ctx.fillStyle = '#FFDD44';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('Q:' + queens[0].specialUses + '/3', 10, 32);
+  // P1 special ability uses — large circles
+  const p1SpecialX = 80;
+  ctx.font = 'bold 12px monospace';
+  ctx.fillStyle = '#ccc';
+  ctx.fillText('Q', p1SpecialX, 42);
+  for (let si = 0; si < 3; si++) {
+    const cx = p1SpecialX + 16 + si * 18;
+    ctx.beginPath();
+    ctx.arc(cx, 38, 6, 0, Math.PI * 2);
+    if (si < queens[0].specialUses) {
+      ctx.fillStyle = '#FFDD44';
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(100,100,100,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
 
   // P1 power-up indicator
   if (queens[0].activePowerUp) {
     const pcol = POWER_COLORS[queens[0].activePowerUp] || COLORS.powerUp;
     ctx.fillStyle = pcol;
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(queens[0].activePowerUp, 88, 32);
-    if (queens[0].powerUpTimer > 0) {
-      const barW = 48 * Math.min(1, queens[0].powerUpTimer / 80);
-      ctx.fillStyle = pcol;
-      ctx.fillRect(88, 34, barW, 2);
-    }
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(queens[0].activePowerUp, 150, 42);
   }
 
   // P2 panel (right)
   ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
-  roundRect(W - 144, 4, 140, 22, 6);
+  roundRect(W - 204, 4, 200, 50, 8);
   ctx.fill();
 
-  // P2 label
-  ctx.font = 'bold 13px monospace';
+  // P2 label + character type
+  ctx.font = 'bold 16px monospace';
   ctx.textAlign = 'right';
   ctx.fillStyle = queens[1].color;
-  ctx.fillText('P2 ' + queens[1].charType, W - 10, 19);
+  ctx.fillText('P2 ' + queens[1].charType, W - 12, 22);
 
   // P2 hearts
   for (let i = 0; i < Math.max(3, queens[1].hp); i++) {
     ctx.fillStyle = i < queens[1].hp ? queens[1].color : 'rgba(100,100,100,0.4)';
     ctx.strokeStyle = i < queens[1].hp ? queens[1].color : 'rgba(100,100,100,0.4)';
     ctx.lineWidth = 1;
-    drawHeart(W - 126 + i * 16, 8, 6, i < queens[1].hp);
+    drawHeart(W - 196 + i * 18, 30, 7, i < queens[1].hp);
   }
 
-  // P2 special uses
-  ctx.fillStyle = '#FFDD44';
-  ctx.font = '10px monospace';
+  // P2 special ability uses — large circles
+  const p2SpecialX = W - 80;
+  ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'right';
-  ctx.fillText('RS:' + queens[1].specialUses + '/3', W - 10, 32);
+  ctx.fillStyle = '#ccc';
+  ctx.fillText('RS', p2SpecialX - 50, 42);
+  for (let si = 0; si < 3; si++) {
+    const cx = p2SpecialX - 40 + si * 18;
+    ctx.beginPath();
+    ctx.arc(cx, 38, 6, 0, Math.PI * 2);
+    if (si < queens[1].specialUses) {
+      ctx.fillStyle = '#FFDD44';
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(100,100,100,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
 
   // P2 power-up indicator
   if (queens[1].activePowerUp) {
     const pcol = POWER_COLORS[queens[1].activePowerUp] || COLORS.powerUp;
     ctx.fillStyle = pcol;
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(queens[1].activePowerUp, W - 88, 32);
-    if (queens[1].powerUpTimer > 0) {
-      const barW = 48 * Math.min(1, queens[1].powerUpTimer / 80);
-      ctx.fillStyle = pcol;
-      ctx.fillRect(W - 88 - barW, 34, barW, 2);
-    }
+    ctx.fillText(queens[1].activePowerUp, W - 150, 42);
   }
 
   // Round + score (center)
   ctx.fillStyle = 'rgba(0,0,0,' + panelAlpha + ')';
-  roundRect(W / 2 - 80, 4, 160, 22, 6);
+  roundRect(W / 2 - 90, 4, 180, 28, 8);
   ctx.fill();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ccc';
-  ctx.font = 'bold 13px monospace';
-  ctx.fillText('ROUND ' + roundNum + '  \u00B7  ' + scores[0] + '-' + scores[1], W / 2, 19);
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('ROUND ' + roundNum + '  \u00B7  ' + scores[0] + '-' + scores[1], W / 2, 24);
 
   // Control hints
   ctx.font = '10px monospace';
