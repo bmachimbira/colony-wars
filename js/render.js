@@ -529,9 +529,11 @@ function draw() {
         if (fogVisible[y] && fogVisible[y][x]) continue;
         const px = x * TILE, py = y * TILE;
         if (fogExplored[y] && fogExplored[y][x]) {
-          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          // Explored but not currently visible — light dim
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
         } else {
-          ctx.fillStyle = 'rgba(0,0,0,0.85)';
+          // Never explored — very dark
+          ctx.fillStyle = 'rgba(0,0,0,0.8)';
         }
         ctx.fillRect(px, py, TILE, TILE);
       }
@@ -1508,19 +1510,23 @@ function drawMiniMap() {
 // ─── Mutator HUD ──────────────────────────────────────────────
 function drawMutatorHUD() {
   if (activeModifiers.length === 0) return;
-  const startX = W / 2 - activeModifiers.length * 50;
-  const y = 42;
-  ctx.font = 'bold 10px monospace';
+  const startX = W / 2 - activeModifiers.length * 70;
+  const y = 44;
   ctx.textAlign = 'center';
   for (let i = 0; i < activeModifiers.length; i++) {
     const mod = MUTATORS.find(m => m.id === activeModifiers[i]);
     if (!mod) continue;
-    const mx = startX + i * 100 + 50;
+    const mx = startX + i * 140 + 70;
+    // Background pill
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    const tw = ctx.measureText('[' + mod.icon + '] ' + mod.name.toUpperCase()).width;
+    roundRect(mx - tw / 2 - 8, y - 12, tw + 16, 18, 4);
+    ctx.fill();
+    // Text
+    ctx.font = 'bold 13px monospace';
     ctx.fillStyle = mod.color;
-    ctx.globalAlpha = 0.8;
     ctx.fillText('[' + mod.icon + '] ' + mod.name.toUpperCase(), mx, y);
   }
-  ctx.globalAlpha = 1;
 }
 
 function drawNarrative() {
