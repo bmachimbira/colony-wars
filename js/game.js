@@ -109,6 +109,9 @@ function update(dt) {
   // Update worms
   updateWorms(dt);
 
+  // Update anteater
+  updateAnteater(dt);
+
   // Spawn mound logic
   updateMound(dt);
 
@@ -138,6 +141,9 @@ function startNewRound() {
   worms = [];
   mounds = [];
   powerUps = [];
+  anteater = null;
+  anteaterTimer = 45;
+  anteaterWarning = 0;
   roundTimer = 0;
   moundTimer = 1;
   powerUpTimer = 1;

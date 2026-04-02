@@ -332,6 +332,9 @@ function draw() {
     drawAnt(s.x, s.y, s.dir, s.colony === 'blue' ? COLORS.p1 : COLORS.p2, 0.7, s.lifetime < 3 ? 0.5 : 1, false, performance.now() / 100);
   }
 
+  // Draw anteater
+  drawAnteater();
+
   // Draw queens
   for (const q of queens) {
     if (q.invTimer > 0 && Math.floor(q.invTimer * 10) % 2 === 0) continue;
