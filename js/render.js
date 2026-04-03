@@ -1448,9 +1448,9 @@ function drawHUD() {
   ctx.font = '10px monospace';
   ctx.fillStyle = '#555';
   ctx.textAlign = 'left';
-  ctx.fillText('ARROWS+SPACE  RShift:special', 8, H - 8);
+  ctx.fillText('WASD+SPACE  Q/X:special', 8, H - 8);
   ctx.textAlign = 'right';
-  ctx.fillText('WASD+TAB  Q:special', W - 8, H - 8);
+  ctx.fillText('ARROWS+ENTER  RShift/X:special', W - 8, H - 8);
 }
 
 // ─── Mini-Map ─────────────────────────────────────────────────
@@ -1677,7 +1677,7 @@ function drawTitle() {
 
   ctx.fillStyle = '#555';
   ctx.font = '12px monospace';
-  ctx.fillText('P1: ARROWS + SPACE   |   P2: WASD + TAB', W / 2, H / 2 + 115);
+  ctx.fillText('P1: WASD + SPACE   |   P2: ARROWS + ENTER', W / 2, H / 2 + 115);
 
   ctx.fillStyle = '#444';
   ctx.font = '11px monospace';
@@ -1776,11 +1776,11 @@ function drawCharSelect() {
     ctx.fillStyle = '#666';
     ctx.font = '11px monospace';
     if (p === 0) {
-      ctx.fillText('\u2191/\u2193: character  \u2190/\u2192: color', cx, top + panelH - 40);
+      ctx.fillText('W/S: character  A/D: color', cx, top + panelH - 40);
       ctx.fillText('SPACE: ready', cx, top + panelH - 22);
     } else {
-      ctx.fillText('W/S: character  A/D: color', cx, top + panelH - 40);
-      ctx.fillText('TAB: ready', cx, top + panelH - 22);
+      ctx.fillText('\u2191/\u2193: character  \u2190/\u2192: color', cx, top + panelH - 40);
+      ctx.fillText('ENTER: ready', cx, top + panelH - 22);
     }
 
     // Ready status

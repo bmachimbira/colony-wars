@@ -48,8 +48,8 @@ function gameRandom() { return seededRandom(); }
 
 // Player controls (P1-P4)
 const PLAYER_CONTROLS = [
-  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Space', special: 'ShiftRight' },
-  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Tab', special: 'KeyQ' },
+  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'Space', special: 'KeyQ' },
+  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', shoot: 'Enter', special: 'ShiftRight' },
   { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL', shoot: 'KeyH', special: 'KeyY' },
   { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6', shoot: 'Numpad0', special: 'NumpadDecimal' },
 ];
