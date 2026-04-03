@@ -1712,7 +1712,7 @@ function drawCharSelect() {
     const sel = charSelect[p];
     const cx = p === 0 ? W * 0.25 : W * 0.75;
     const top = 90;
-    const isAI = singlePlayer && p === 1;
+    const isAI = singlePlayer && p === 0;
 
     // Panel background
     ctx.fillStyle = sel.ready ? 'rgba(50,120,50,0.3)' : 'rgba(255,255,255,0.05)';

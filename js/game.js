@@ -12,12 +12,12 @@ function update(dt) {
       return;
     }
     if (keys['Digit1']) {
-      // Single player vs AI
+      // Single player vs AI — AI is P1 (WASD), human is P2 (arrows)
       singlePlayer = true;
       playerCount = 2;
       gameState = STATE.CHAR_SELECT;
-      charSelect[0] = { charType: 0, colorIdx: 0, ready: false };
-      charSelect[1] = { charType: Math.floor(Math.random() * 3), colorIdx: 1 + Math.floor(Math.random() * 7), ready: true };
+      charSelect[0] = { charType: Math.floor(Math.random() * 3), colorIdx: Math.floor(Math.random() * CHAR_COLORS.length), ready: true }; // AI
+      charSelect[1] = { charType: 0, colorIdx: 1, ready: false }; // Human
       for (const k in keys) keys[k] = false;
       startCharSelectMusic();
       return;
@@ -207,8 +207,8 @@ function update(dt) {
   // Mutator effects
   updateMutators(dt);
 
-  // Update fog of war visibility
-  updateFog();
+  // Update fog of war visibility (disabled — show full field)
+  // updateFog();
 
   // Check win condition — eliminate dead queens, last one standing wins
   for (let i = 0; i < queens.length; i++) {
@@ -295,17 +295,9 @@ function startNewRound() {
   }
   regrowthTimer = REGROWTH_INTERVAL;
 
-  // Initialize fog arrays
+  // Fog disabled — clear arrays so renderer skips fog overlay
   fogExplored = [];
   fogVisible = [];
-  for (let y = 0; y < ROWS; y++) {
-    fogExplored[y] = [];
-    fogVisible[y] = [];
-    for (let x = 0; x < COLS; x++) {
-      fogExplored[y][x] = false;
-      fogVisible[y][x] = false;
-    }
-  }
 
   // Pick round mutators
   activeModifiers = [];
@@ -666,8 +658,8 @@ function updateCharSelect() {
   }
   if (keys['Enter']) { charSelect[1].ready = !charSelect[1].ready; keys['Enter'] = false; }
 
-  // In single player, P2 is always ready (AI)
-  if (singlePlayer) charSelect[1].ready = true;
+  // In single player, AI (P1) is always ready
+  if (singlePlayer) charSelect[0].ready = true;
 
   // Both ready — start game
   if (charSelect[0].ready && charSelect[1].ready) {

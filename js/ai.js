@@ -12,9 +12,9 @@ let aiState = {
 
 function updateAI(dt) {
   if (!singlePlayer || queens.length < 2) return;
-  const ai = queens[1]; // AI is always P2
+  const ai = queens[0]; // AI is P1 (WASD)
   if (ai.dead) return;
-  const player = queens[0];
+  const player = queens[1]; // Human is P2 (arrows)
   const c = ai.controls;
 
   // Clear AI keys each frame
